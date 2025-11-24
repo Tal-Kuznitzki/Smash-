@@ -1,11 +1,11 @@
 // signals.c
 #include "signals.h"
 #include <stdio.h>
-
+#ifndef
 #define KILL 5
 #define CTRLZ 20
 #define CTRLC 2
-#ifndef
+
 #define JOB_STATE_FG 1
 #define JOB_STATE_STP 3
 #endif

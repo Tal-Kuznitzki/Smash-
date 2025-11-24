@@ -23,6 +23,7 @@ typedef struct job {
     char cmd[80];
     int state; // 1 fg  2 bg 3 stopped
 } job ;
+//TODO add structs to the H file!
 
 typedef struct cmd {
     char cmd[80];
@@ -34,6 +35,7 @@ typedef struct cmd {
 
 
 int command_selector(char[80] cmd_after_parse){
+    char[80] cmd_args;
     switch (cmd_after_parse) {
         case cmd_DB[0].alias :
             showpid();
@@ -51,6 +53,7 @@ int command_selector(char[80] cmd_after_parse){
             kill();
             break;
         case cmd_DB[5].alias :
+            //TODO: add check at parser for #args, and pass -1 if no args
             fg();
             break;
         case cmd_DB[6].alias :
@@ -88,14 +91,14 @@ cmd cmd_DB[11];
 =============================================================================*/
 int main(int argc, char* argv[])
 {
-	char _cmd[CMD_LENGTH_MAX];
+    char _cmd[CMD_LENGTH_MAX];
     struct sigaction sa = { .sa_handler = &sigintHandler };
     sigaction(CTRLZ || CTRLC  , &sa, NULL);  //TODO WHERE THIS GOES?!
     while(1) {
-		printf("smash > ");
-		fgets(_line, CMD_LENGTH_MAX, stdin);
-		strcpy(_cmd, _line);
-		//execute command
+        printf("smash > ");
+        fgets(_line, CMD_LENGTH_MAX, stdin);
+        strcpy(_cmd, _line);
+        //execute command
 
         // TODO: input parser !!!
         /*
@@ -109,7 +112,7 @@ int main(int argc, char* argv[])
         if () { //internal
             if(){ //internal-fg
                 command_selector(cmd_after_parse);
-                 }
+            }
             else { //internal-bg
                 int pid_internal_bg = my_system_call(1); // FORK
                 if (pid_internal_bg==0){
@@ -218,10 +221,10 @@ int main(int argc, char* argv[])
 
 
 
-		//initialize buffers for next command
-		_line[0] = '\0';
-		_cmd[0] = '\0';
-	}
+        //initialize buffers for next command
+        _line[0] = '\0';
+        _cmd[0] = '\0';
+    }
 
-	return 0;
+    return 0;
 }

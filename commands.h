@@ -38,20 +38,27 @@ static inline void* _validatedMalloc(size_t size)
 * error definitions
 =============================================================================*/
 typedef enum  {
-	INVALID_COMMAND = 0,
-	//feel free to add more values here or delete this
+    INVALID_COMMAND = 0,
+    //feel free to add more values here or delete this
 } ParsingError;
 
 typedef enum {
-	SMASH_SUCCESS = 0,
-	SMASH_QUIT,
-	SMASH_FAIL
-	//feel free to add more values here or delete this
+    SMASH_SUCCESS = 0,
+    SMASH_QUIT,
+    SMASH_FAIL
+    //feel free to add more values here or delete this
 } CommandResult;
 
 /*=============================================================================
 * global functions
 =============================================================================*/
+typedef struct job {
+    int PID;
+    int JOB_ID;
+    char cmd[80];
+    int state; // 1 fg, 2 bg, 3 stopped
+} job;
+
 int parseCommandExample(char* line);
 
 #endif //COMMANDS_H
