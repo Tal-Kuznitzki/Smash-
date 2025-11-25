@@ -39,9 +39,53 @@ MAX_ERROR_LEN = 30;
 
 #endif
 
+const char* cmd_DB[11]= {"showpid","pwd","cd","jobs","kill","fg","bg","quit","diff","alias","unalias" } ;
+
 cmd cmd_obj; // global cmd object to use in all methods
 char old_cd[CMD_LENGTH_MAX] = {0};
 char current_cd[CMD_LENGTH_MAX] = {0};
+
+int command_selector(char[80] cmd_after_parse){
+    char[80] cmd_args;
+    switch (cmd_after_parse.cmd) {
+        case cmd_DB[0] :
+            showpid();
+            break;
+        case cmd_DB[1] :
+            pwd();
+            break;
+        case cmd_DB[2] :
+            cd();
+            break;
+        case cmd_DB[3] :
+            jobs();
+            break;
+        case cmd_DB[4] :
+            kill();
+            break;
+        case cmd_DB[5] :
+            //TODO: add check at parser for #args, and pass -1 if no args
+            fg();
+            break;
+        case cmd_DB[6] :
+            bg();
+            break;
+        case cmd_DB[7] :
+            quit();
+            break;
+        case cmd_DB[8] :
+            diff();
+            break;
+        case cmd_DB[9] :
+            alias();
+            break;
+        case cmd_DB[10]:
+            unalias();
+            break;
+    }
+
+
+}
 
 //example function for printing errors from internal commands
 void perrorSmash(const char* cmd, const char* msg)
@@ -53,23 +97,36 @@ void perrorSmash(const char* cmd, const char* msg)
 }
 
 //example function for parsing commands
-int parseCmdExample(char* line)
+cmd parseCmdExample(char* line)
 {
+	cmd cmd_obj;
+	cmd_obj.internal = 0;
     char* delimiters = " \t\n"; //parsing should be done by spaces, tabs or newlines
-    char* cmd = strtok(line, delimiters); //read strtok documentation - parses string by delimiters
-    if(!cmd)
+    cmd_obj.cmd = strtok(line, delimiters); //read strtok documentation - parses string by delimiters
+    if(!cmd_obj.cmd)
         return INVALID_COMMAND; //this means no tokens were found, most like since command is invalid
 
-    char* args[MAX_ARGS];
-    int nargs = 0;
-    args[0] = cmd; //first token before spaces/tabs/newlines should be command name
+    cmd_obj.nargs = 0;
+    cmd_obj.args[0] = cmd_obj.cmd; //first token before spaces/tabs/newlines should be command name
     for(int i = 1; i < MAX_ARGS; i++)
     {
-        args[i] = strtok(NULL, delimiters); //first arg NULL -> keep tokenizing from previous call
-        if(!args[i])
+        cmd_obj.args[i] = strtok(NULL, delimiters); //first arg NULL -> keep tokenizing from previous call
+        if(!cmd_obj.args[i])
             break;
-        nargs++;
+        cmd_obj.nargs++;
     }
+	for (i=0 ; i<11 ; i++) {
+		if (!strcmp(cmd_DB[i], cmd_obj.cmd)){
+			cmd_obj.internal = 1;
+		}
+	}
+	for (i = 19 ; i>0 ; i--) {
+		if (cmd_obj.args[i] == "&"){
+			cmd_obj.bg = 1;
+			cmd_obj.nargs--;
+		}
+	}
+	
     /*
     At this point cmd contains the command string and the args array contains
     the arguments. You can return them via struct/class, for example in C:
@@ -188,16 +245,21 @@ int  fg(job *jobs, int job_id) {
 
     }
 
+}
 
-
-
-
-
-
+int quit(int nargs ,char* arg){
+    if (nargs>1){
+        perrorSmash("quit","expected 0 or 1 arguments");
+    }
+    if (arg = "kill"){
+        //main thing
+    }
+    else{
+        perrorSmash("quit","unexpected arguments")
+    }
 }
 
 int showpid(cmd cmd_obj) {
-	parseCmdExample();
 	if (cmd_obj.nargs != 0) {
 		perrorSmash(const char* "showpid", const char* "expected 0 arguments");
 		// fprintf(stderr, "smash error: showpid: expected 0 argument");
@@ -210,9 +272,8 @@ int showpid(cmd cmd_obj) {
 	}
 }
 
-int pwd(job job_obj) {
-	parseCmdExample();
-	if (job_obj.nargs != 0) {
+int pwd(cmd cmd_obj) {
+	if (cmd_obj.nargs != 0) {
 		perrorSmash(const char* "pwd", const char* "expected 0 arguments");
 		// fprintf(stderr, "smash error: pwd: expected 0 argument");
 		return -1;
@@ -237,9 +298,8 @@ int pwd(job job_obj) {
 	}
 }
 
-int kill(job job_obj, int signum, int job_id) {
-	parseCmdExample();
-	if ((job_obj.nargs != 2) || (job_obj.args[1] < 1) || (job_obj.args[1] > 64) ) { // make sure signum is a valid signum (1<=args[1]<=64)
+int kill(cmd cmd_obj, int signum, int job_id) {
+	if ((cmd_obj.nargs != 2) || (cmd_obj.args[1] < 1) || (cmd_obj.args[1] > 64) ) { // make sure signum is a valid signum (1<=args[1]<=64)
 		perrorSmash(const char* "kill", const char* "invalid arguments");
 
 		return -1;
@@ -258,15 +318,14 @@ int kill(job job_obj, int signum, int job_id) {
 	return -1;
 }
 
-int cd (job job_obj, char* path) {
+int cd (cmd cmd_obj, char* path) {
 
-	parseCmdExample();
-	if (job_obj.nargs != 1) {
+	if (cmd_obj.nargs != 1) {
 		perrorSmash(const char* "cd", const char* "expected 1 arguments");
 		return -1;
 	}
 	else {
-		if (job.args[1] == '-'){
+		if (cmd.args[1] == '-'){
 			if (old_cd == NULL) {
 				perrorSmash(const char* "cd", const char* "old pwd not set");
 				return -1;
@@ -276,7 +335,7 @@ int cd (job job_obj, char* path) {
 				return 0;
 			}
 		}
-		else if (job.args[1] == '..') {
+		else if (cmd.args[1] == '..') {
 			char* pwd[CMD_LENGTH_MAX] = {0}; // is there a clear defenition of how long can it be ??
 			if (getcwd(pwd, CMD_LENGTH_MAX) != NULL) {
 				char* delimiters = "/"; 
@@ -316,8 +375,8 @@ int cd (job job_obj, char* path) {
 
 }
 
-int jobs(job job_obj){
-	if (job_obj.nargs != 0){
+int jobs(cmd cmd_obj){
+	if (cmd_obj.nargs != 0){
 		perrorSmash(const char* "jobs", const char* "expected 0 arguments");
 		return -1;	
 	}
