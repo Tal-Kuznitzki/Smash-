@@ -3,6 +3,11 @@
 #include "commands.h"
 #include <errno.h>
 #include <string.h>
+#include <stdio.h>    
+#include <unistd.h>
+
+
+MAX_ERROR_LEN = 30;
 
 #define SYS_FORK     1
 #define SYS_EXECVP   2
@@ -33,6 +38,10 @@
 
 
 #endif
+
+cmd cmd_obj; // global cmd object to use in all methods
+char old_cd[CMD_LENGTH_MAX] = {0};
+char current_cd[CMD_LENGTH_MAX] = {0};
 
 //example function for printing errors from internal commands
 void perrorSmash(const char* cmd, const char* msg)
@@ -186,5 +195,146 @@ int  fg(job *jobs, int job_id) {
 
 
 }
+
+int showpid(job job_obj) {
+	parseCmdExample();
+	if (job_obj.nargs != 0) {
+		perrorSmash(const char* "showpid", const char* "expected 0 arguments");
+		// fprintf(stderr, "smash error: showpid: expected 0 argument");
+		return -1;
+	}
+	else {
+		pid_t smash_pid = getpid();
+		printf ("smash pid is %ld\n", (long) smash_pid);
+		return smash_pid;
+	}
+}
+
+int pwd(job job_obj) {
+	parseCmdExample();
+	if (job_obj.nargs != 0) {
+		perrorSmash(const char* "pwd", const char* "expected 0 arguments");
+		// fprintf(stderr, "smash error: pwd: expected 0 argument");
+		return -1;
+	}
+	else {
+		
+		char* pwd = (char*)malloc(CMD_LENGTH_MAX); // is there a clear defenition of how long can it be ??
+		if (pwd == NULL) {
+			perrorSmash(const char* "pwd", const char* "malloc failed");
+			exit(-1);
+    	}
+		if (getcwd(pwd, CMD_LENGTH_MAX) != NULL) {
+        	printf("%s\n", pwd);
+			free(pwd);
+			return 0;
+    	} 
+		else {
+			perrorSmash(const char* "pwd", const char* "getcwd failed");
+        	free(pwd);
+			return -1;
+		}
+	}
+}
+
+int kill(job job_obj, int signum, int job_id) {
+	parseCmdExample();
+	if ((job_obj.nargs != 2) || (job_obj.args[1] < 1) || (job_obj.args[1] > 64) ) { // make sure signum is a valid signum (1<=args[1]<=64)
+		perrorSmash(const char* "kill", const char* "invalid arguments");
+
+		return -1;
+	}
+	for (i=0 ; i < 100 ; i++){
+		if (job_id == i && job_list[i] != NULL ){
+			my_system_call(5, job_list[i].PID, signum); //send signal
+			printf("signal %d was sent to pid %ld", signum, job_list[i].PID); // maybe we should define all global variables in commands.h ??
+			return 0;
+		}
+	}
+	char error_msg[MAX_ERROR_LEN] = {0}; // longest message should be no longer than 25
+	snprintf(error_msg, MAX_ERROR_LEN, "job id %d does not exist", job_id);
+
+	perrorSmash(const char* "kill", const char* error_msg);
+	return -1;
+}
+
+int cd (job job_obj, char* path) {
+
+	parseCmdExample();
+	if (job_obj.nargs != 1) {
+		perrorSmash(const char* "cd", const char* "expected 1 arguments");
+		return -1;
+	}
+	else {
+		if (job.args[1] == '-'){
+			if (old_cd == NULL) {
+				perrorSmash(const char* "cd", const char* "old pwd not set");
+				return -1;
+    		}
+			else {
+				printf("%s \n", old_path); // TODO: change the dir
+				return 0;
+			}
+		}
+		else if (job.args[1] == '..') {
+			char* pwd[CMD_LENGTH_MAX] = {0}; // is there a clear defenition of how long can it be ??
+			if (getcwd(pwd, CMD_LENGTH_MAX) != NULL) {
+				char* delimiters = "/"; 
+				//char path_to_print [CMD_LENGTH_MAX] = {0};
+				char* last_dir = strrchr(path, delimiters);
+				if (strcmp(*last_dir, path)){
+					return 0;
+				}
+				else {
+					*last_dir = '/0';
+					printf("pwd\n%s \n", path); // change the dir
+					return 0;
+				}
+				
+    		} 
+
+		}
+		else {
+			DIR* dir = opendir(path);
+			if (dir == NULL){ // check if path valid
+				if (errno == ENOENT){
+					perrorSmash(const char* "cd", const char* "target directory does not exist");
+				}
+
+			}
+			else if (){
+
+			} // check if path to a dir or a file
+			else {
+				printf("pwd\n%s\n", path);
+				return 0;
+			}
+		
+		}
+		
+	}
+
+}
+
+int jobs(job job_obj){
+	if (job_obj.nargs != 0){
+		perrorSmash(const char* "jobs", const char* "expected 0 arguments");
+		return -1;	
+	}
+	else {
+		for (i = 0 ; i<100 ; i++){
+			if (jobs_list[i] != NULL){
+				if (jobs_list[i].state == 3){
+					printf("[%d] %s: %ld %d secs (stopped)\n", i, jobs_list[i].cmd, jobs_list[i].PID, jobs_list[i].time)
+				}
+				else{
+					printf("[%d] %s: %ld %d secs\n", i, jobs_list[i].cmd, jobs_list[i].PID, jobs_list[i].time)
+				}
+			}
+		}
+		return 0;
+	}
+}
+
 
 
