@@ -1,5 +1,4 @@
 //smash.c
-
 /*=============================================================================
 * includes, defines, usings
 =============================================================================*/
@@ -27,55 +26,15 @@ typedef struct job {
 //TODO add structs to the H file!
 
 typedef struct cmd {
-    char cmd[80];
-    char alias[80];
+    char* cmd[80];
+    int nargs;
+    char* args[ARGS_NUM_MAX]={0};
+    int bg; //1 - bg 0 - fg
+    int internal=0 ; // 1 internal  0 -external
     //TODO maybe add a pointer to the cmd ??
 } cmd ;
 
 
-
-
-int command_selector(char[80] cmd_after_parse){
-    char[80] cmd_args;
-    switch (cmd_after_parse) {
-        case cmd_DB[0].alias :
-            showpid();
-            break;
-        case cmd_DB[1].alias :
-            pwd();
-            break;
-        case cmd_DB[2].alias :
-            cd();
-            break;
-        case cmd_DB[3].alias :
-            jobs();
-            break;
-        case cmd_DB[4].alias :
-            kill();
-            break;
-        case cmd_DB[5].alias :
-            //TODO: add check at parser for #args, and pass -1 if no args
-            fg();
-            break;
-        case cmd_DB[6].alias :
-            bg();
-            break;
-        case cmd_DB[7].alias :
-            quit();
-            break;
-        case cmd_DB[8].alias :
-            diff();
-            break;
-        case cmd_DB[9].alias :
-            alias();
-            break;
-        case cmd_DB[10].alias :
-            unalias();
-            break;
-    }
-
-
-}
 
 
 /*=============================================================================
@@ -85,7 +44,6 @@ char _line[CMD_LENGTH_MAX];
 job jobs_list[100];
 current_job_index=0; // TODO update accordingly
 
-cmd cmd_DB[11];
 
 /*=============================================================================
 * main function
@@ -94,7 +52,7 @@ int main(int argc, char* argv[])
 {
     char _cmd[CMD_LENGTH_MAX];
     struct sigaction sa = { .sa_handler = &sigintHandler };
-    sigaction(CTRLZ || CTRLC  , &sa, NULL);  //TODO WHERE THIS GOES?!
+    sigaction(CTRLZ || CTRLC   , &sa, NULL);  //TODO WHERE THIS GOES?!
     while(1) {
         printf("smash > ");
         fgets(_line, CMD_LENGTH_MAX, stdin);
@@ -102,25 +60,21 @@ int main(int argc, char* argv[])
         //execute command
 
         // TODO: input parser !!!
-        /*
-         *
-         *
-         */
-
-        cmd_after_parse = 1 ;
 
 
-        if () { //internal
-            if(){ //internal-fg
+        cmd cmd_after_parse = parseCmdExample(_cmd);
+
+        if (cmd_after_parse.internal) { //internal
+            if(cmd_after_parse.bg == 0 ){ //internal-fg
                 command_selector(cmd_after_parse);
             }
             else { //internal-bg
                 int pid_internal_bg = my_system_call(1); // FORK
                 if (pid_internal_bg==0){
+                    setpgrp();
                     command_selector(cmd_after_parse);
                     current_job_index = (current_job_index>bg_internal_job.JOB_ID) ? bg_internal_job.JOB_ID : current_job_index ;
                     jobs_list[bg_internal_job.JOB_ID] = NULL ;
-                    exit(0);
                 }
                 else { //father process
                     job bg_internal_job;
@@ -141,7 +95,7 @@ int main(int argc, char* argv[])
         else //we are external
         {
 
-            if(inbackground) // external-bg
+            if(cmd_after_parse.bg) // external-bg
             {
                 int pid_bg = my_system_call(1); // FORK
                 if (pid_bg == 0 ) //if son - run_program in a new proc
@@ -201,31 +155,10 @@ int main(int argc, char* argv[])
 
 
             }
-
-
-
-
         }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         //initialize buffers for next command
         _line[0] = '\0';
         _cmd[0] = '\0';
     }
-
     return 0;
 }
