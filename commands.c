@@ -196,9 +196,9 @@ int  fg(job *jobs, int job_id) {
 
 }
 
-int showpid(job job_obj) {
+int showpid(cmd cmd_obj) {
 	parseCmdExample();
-	if (job_obj.nargs != 0) {
+	if (cmd_obj.nargs != 0) {
 		perrorSmash(const char* "showpid", const char* "expected 0 arguments");
 		// fprintf(stderr, "smash error: showpid: expected 0 argument");
 		return -1;
