@@ -34,6 +34,26 @@ static inline void* _validatedMalloc(size_t size)
     ((type*)_validatedMalloc((size)))
 
 
+
+
+typedef struct job {
+    int PID;
+    int JOB_ID;
+    char cmd[80];
+    int state; // 1 fg  2 bg 3 stopped
+    int time;
+} job ;
+//TODO add structs to the H file!
+
+typedef struct cmd {
+    char* cmd[80];
+    int nargs;
+    char* args[ARGS_NUM_MAX]={0};
+    int bg; //1 - bg 0 - fg
+    int internal=0 ; // 1 internal  0 -external
+    //TODO maybe add a pointer to the cmd ??
+} cmd ;
+
 /*=============================================================================
 * error definitions
 =============================================================================*/
@@ -59,6 +79,20 @@ typedef struct job {
     int state; // 1 fg, 2 bg, 3 stopped
 } job;
 
-int parseCommandExample(char* line);
+cmd parseCommandExample(char* line);
+int command_selector(cmd cmd_after_parse);
+void perrorSmash(const char* cmd, const char* msg);
+int diff(char* args[MAX_ARGS],int nargs);
+int  fg(job *jobs, int job_id);
+int quit(int nargs ,char* arg);
+int showpid(cmd cmd_obj);
+int pwd(cmd cmd_obj);
+int kill(cmd cmd_obj, int signum, int job_id);
+int cd (cmd cmd_obj, char* path);
+int jobs(cmd cmd_obj);
+
+
+
+
 
 #endif //COMMANDS_H

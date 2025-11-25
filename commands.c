@@ -9,6 +9,12 @@
 
 MAX_ERROR_LEN = 30;
 
+
+
+#define CMD_LENGTH_MAX 120
+#define ARGS_NUM_MAX 20
+#define JOBS_NUM_MAX 100
+
 #define SYS_FORK     1
 #define SYS_EXECVP   2
 #define SYS_WAITPID  3
@@ -40,12 +46,10 @@ MAX_ERROR_LEN = 30;
 #endif
 
 const char* cmd_DB[11]= {"showpid","pwd","cd","jobs","kill","fg","bg","quit","diff","alias","unalias" } ;
-
-cmd cmd_obj; // global cmd object to use in all methods
 char old_cd[CMD_LENGTH_MAX] = {0};
 char current_cd[CMD_LENGTH_MAX] = {0};
 
-int command_selector(char[80] cmd_after_parse){
+int command_selector(cmd cmd_after_parse){
     char[80] cmd_args;
     switch (cmd_after_parse.cmd) {
         case cmd_DB[0] :
@@ -155,7 +159,7 @@ Unalias
 
 
 
-int diff(char* args[MAX_ARGS],int nargs){
+int diff(char* args[ARGS_NUM_MAX],int nargs){
     if (nargs!=2){
         perrorSmash("diff","expected 2 arguments");
         return -1 ; // TODO :VERIFY WHAT RETVAL SHOULD BE ON ERROR

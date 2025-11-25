@@ -25,7 +25,11 @@ int pid_to_sig= -1;
 int job_id_to_sig = 0 ;
 void sigintHandler(int sig){
 
-//    CTRL Z = 20  CTRL C = 2
+//    CTRL Z = 20  CTRL C = 2 SIGCHILD=17
+    if (sig == SIGCHLD){
+        my_system_call(SYS_WAITPID,)
+    }
+
     for (int i = 0; i< 100 ; ++i) {
         if (jobs_list[i].state == JOB_STATE_FG){
             pid_to_sig=jobs_list[i].PID;

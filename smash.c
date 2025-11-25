@@ -16,23 +16,7 @@
 /*=============================================================================
 * classes/structs declarations
 =============================================================================*/
-typedef struct job {
-    int PID;
-    int JOB_ID;
-    char cmd[80];
-    int state; // 1 fg  2 bg 3 stopped
-    int time;
-} job ;
-//TODO add structs to the H file!
 
-typedef struct cmd {
-    char* cmd[80];
-    int nargs;
-    char* args[ARGS_NUM_MAX]={0};
-    int bg; //1 - bg 0 - fg
-    int internal=0 ; // 1 internal  0 -external
-    //TODO maybe add a pointer to the cmd ??
-} cmd ;
 
 
 
@@ -100,6 +84,7 @@ int main(int argc, char* argv[])
                 int pid_bg = my_system_call(1); // FORK
                 if (pid_bg == 0 ) //if son - run_program in a new proc
                 {
+                    setpgrp();
                     my_system_call(2,cmd_after_parse);
                     //TODO ERROR CHAINING TO OUTSIDE
                     current_job_index = (current_job_index>bg_external_job.JOB_ID) ? bg_external_job.JOB_ID : current_job_index ;
