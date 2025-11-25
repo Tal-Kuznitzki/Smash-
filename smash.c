@@ -22,6 +22,7 @@ typedef struct job {
     int JOB_ID;
     char cmd[80];
     int state; // 1 fg  2 bg 3 stopped
+    int time;
 } job ;
 //TODO add structs to the H file!
 
