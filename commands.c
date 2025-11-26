@@ -123,9 +123,6 @@ int fg(job *jobs, int job_id, int nargs) {
                 job_idx_in_jobs = i;
             }
         }
-
-
-
     }
     else{
         for (int j = 0; j < JOBS_NUM_MAX ; ++j) {
@@ -149,7 +146,7 @@ int fg(job *jobs, int job_id, int nargs) {
     print("%s %d", jobs[job_idx_in_jobs].cmd, jobs[job_idx_in_jobs].PID);
 2
     if (jobs[job_idx_in_jobs].state == JOB_STATE_STP){ // if stopped, send it SIGCONT
-        jobs[job_idx_in_jobs].state == JOB_STATE_FG;
+        jobs[job_idx_in_jobs].state = JOB_STATE_FG;
         my_system_call(SYS_KILL,jobs[job_idx_in_jobs].PID,SIGCONT);
         print("%s", jobs[job_idx_in_jobs].cmd);
 
@@ -367,6 +364,12 @@ int jobs(cmd cmd_obj){
 }
 
 
+int alias( char* new_cmd_name, char* new_cmd){
+
+
+}
+
+
 int command_selector(cmd cmd_after_parse){
 
 
@@ -419,8 +422,9 @@ void perrorSmash(const char* cmd, const char* msg)
 }
 
 //example function for parsing commands
-cmd parseCmdExample(char* line)
+cmd* parseCmdExample(char* line)
 {
+    cmd cmd_list[ARGS_NUM_MAX]= {0};
 	cmd cmd_obj;
 	cmd_obj.internal = 0;
     char* delimiters = " \t\n"; //parsing should be done by spaces, tabs or newlines
@@ -437,11 +441,42 @@ cmd parseCmdExample(char* line)
             break;
         cmd_obj.nargs++;
     }
-	for (int i=0 ; i<11 ; i++) {
-		if (!strcmp(cmd_DB[i], cmd_obj.cmd)){
-			cmd_obj.internal = 1;
-		}
-	}
+
+/// cdhello
+    int num_cmd=0;
+    int start_of_cmd=0;
+    int end_of_cmd=-1;
+    cmd_list[num_cmd]=cmd_obj; // 1 cmd only
+    for (int i = 0; i < ARGS_NUM_MAX; ++i) {
+        if( strcmp(cmd_obj.args[i],"&&")  == 0 ){
+           cmd cmd_obj_tmp;
+            cmd_obj_tmp.bg=0;
+           end_of_cmd=i;
+            cmd_obj_tmp.nargs=end_of_cmd-start_of_cmd-1;
+            strcpy(cmd_obj_tmp.cmd,cmd_obj.args[start_of_cmd]);
+            for (int k = i-1; k >= start_of_cmd ; k--) {
+                strcpy(cmd_obj_tmp.args[k-start_of_cmd],cmd_obj.args[k]);
+            }
+
+            //start_of end of
+            for (int i=0 ; i<11 ; i++) {
+                if (!strcmp(cmd_DB[i], cmd_obj_tmp.cmd)){
+                    cmd_obj_tmp.internal = 1;
+                }
+            }
+            start_of_cmd=end_of_cmd+1;
+            cmd_list[num_cmd]=cmd_obj_tmp;
+            num_cmd++;
+        }
+    }
+
+
+    for (int i=0 ; i<11 ; i++) {
+        if (!strcmp(cmd_DB[i], cmd_obj.cmd)){
+            cmd_obj.internal = 1;
+        }
+    }
+
 	for (int i = 19 ; i>0 ; i--) {
 		if (cmd_obj.args[i] == "&"){
 			cmd_obj.bg = 1;
@@ -463,9 +498,7 @@ cmd parseCmdExample(char* line)
             int nargs;
         } CmdArgs;
     */
-
-    //Tal note: I assume we will return a struct  (command ) with the cmd, args, nargs and bool bg
-    return cmd_obj;
+    return cmd_list;
 }
 /*
 fg

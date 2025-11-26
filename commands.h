@@ -24,7 +24,8 @@
 #define DIFFERENT 1
 #define IDENTICAL 0
 #define EOF_READ 0
-#define QUITVAL 2
+#define QUITVAL -2
+#define ERROR -1
 
 
 /*=============================================================================
@@ -93,14 +94,16 @@ cmd parseCommandExample(char* line);
 int command_selector(cmd cmd_after_parse);
 void perrorSmash(const char* cmd, const char* msg);
 int diff(char* args[ARGS_NUM_MAX],int nargs);
-int fg(job *jobs, int job_id, int nargs)
-int quit(int nargs ,char* arg);
+int fg(job *jobs, int job_id, int nargs);
+int quit(job *jobs, int nargs ,char* arg)
 int showpid(cmd cmd_obj);
 int pwd(cmd cmd_obj);
 int kill(cmd cmd_obj, int signum, int job_id);
 int cd (cmd cmd_obj, char* path);
 int jobs(cmd cmd_obj);
 
+int job_to_fg_pid;
+cmd last_fg_cmd; //TODO update in smash
 
 
 
