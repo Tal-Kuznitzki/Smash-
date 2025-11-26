@@ -1,16 +1,14 @@
 //commands.c
-#ifndef
+
 #include "commands.h"
+#include "my_system_call.h"
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>    
 #include <unistd.h>
 
 
-MAX_ERROR_LEN = 30;
-
-
-
+#define MAX_ERROR_LEN = 30;
 #define CMD_LENGTH_MAX 120
 #define ARGS_NUM_MAX 20
 #define JOBS_NUM_MAX 100
@@ -25,13 +23,14 @@ MAX_ERROR_LEN = 30;
 #define SYS_WRITE    8
 #define SYS_OPEN     9
 #define SYS_CLOSE    10
-
 #define DIFFERENT 1
 #define IDENTICAL 0
-#define EOF 0
+#define EOF_READ 0
 
-
-
+#define GRACE_PERIOD 5
+#define CHECK_INTERVAL_SECONDS 1
+#define SIGKILL 9
+#define SIGTERM 15
 #define O_RDONLY 0
 //ERRORs
 #define NOARGSVAL -1
@@ -41,51 +40,370 @@ MAX_ERROR_LEN = 30;
 #define JOB_STATE_FG 1
 #define JOB_STATE_BG 2
 #define JOB_STATE_STP 3
-
-
-#endif
+#define QUITVAL 2
 
 const char* cmd_DB[11]= {"showpid","pwd","cd","jobs","kill","fg","bg","quit","diff","alias","unalias" } ;
 char old_cd[CMD_LENGTH_MAX] = {0};
 char current_cd[CMD_LENGTH_MAX] = {0};
 
+job jobs_list[100];
+int current_job_index=0; // TODO update accordingly
+
+
+
+int diff(char* args[ARGS_NUM_MAX],int nargs){
+    if (nargs!=2){
+        perrorSmash("diff","expected 2 arguments");
+        return -1 ; // TODO :VERIFY WHAT RETVAL SHOULD BE ON ERROR
+    }
+    char* path1 = args[0];
+    char* path2 = args[1];
+
+    //opening both files;
+    int fd1 = my_system_call(SYS_OPEN,path1,O_RDONLY);
+    int fd2 = my_system_call(SYS_OPEN,path2,O_RDONLY);
+
+    if ( ( (fd1 == ERROR) &&  (errno==ENOENT) ) || ( (fd2 == ERROR) &&  (errno==ENOENT) ) ){
+        perrorSmash("diff","expected valid paths for files");
+        return -1 ; // TODO :VERIFY WHAT RETVAL SHOULD BE ON ERROR
+    }
+    const size_t CHUNK_SIZE = 4096;
+    char buffer1[CHUNK_SIZE];
+    char buffer2[CHUNK_SIZE];
+    ssize_t bytes_read1, bytes_read2;
+
+    while (1) {
+        bytes_read1 = my_system_call(SYS_READ, fd1, buffer1, CHUNK_SIZE);
+        bytes_read2 = my_system_call(SYS_READ, fd2, buffer2, CHUNK_SIZE);
+
+        if ( ( (bytes_read1 == ERROR) &&  (errno==EISDIR) ) || ( (bytes_read2 == ERROR) &&  (errno==EISDIR) ) ){
+            perrorSmash("diff","paths are not files");
+            return -1 ;// TODO :VERIFY WHAT RETVAL SHOULD BE ON ERROR
+        }
+        if (bytes_read1 != bytes_read2) { //different sizes, so different ofc
+            my_system_call(SYS_CLOSE, fd1);
+            my_system_call(SYS_CLOSE, fd2);
+            return DIFFERENT;
+        }
+        if ( memcmp(buffer1, buffer2, bytes_read1) != IDENTICAL ) { //chunks are not identical
+            my_system_call(SYS_CLOSE, fd1);
+            my_system_call(SYS_CLOSE, fd2);
+            return DIFFERENT;
+        }
+        if ( ( ( bytes_read1 == EOF_READ ) && (bytes_read2 != EOF_READ ) ) || ( (bytes_read2 == EOF_READ) && (bytes_read1 != EOF_READ) ) ) { //ended reading one file but not the other.
+            my_system_call(SYS_CLOSE, fd1);
+            my_system_call(SYS_CLOSE, fd2);
+            return DIFFERENT;
+        }
+        if ( (bytes_read1 == EOF_READ ) && (bytes_read2 == EOF_READ) ) { //ended reading both files no errors so far
+            my_system_call(SYS_CLOSE, fd1);
+            my_system_call(SYS_CLOSE, fd2);
+            return IDENTICAL;
+        }
+
+    }
+}
+
+int fg(job *jobs, int job_id, int nargs) {
+
+    if (nargs > 1 ){
+        perrorSmash("fg","invalid arguments");
+        return -1; //TODO error val
+    }
+    int job_idx_in_jobs = -1;
+    if (job_id == NOARGSVAL ){
+        int maxId = jobs[0].JOB_ID;
+        if ( jobs[0] == NULL){// TODO verify if this is the correct way to verify empty joblist
+            perrorSmash("fg"," jobs list is empty");
+            return -1; //TODO error val
+        }
+        for (int i = 1; i < JOBS_NUM_MAX; i++) {
+            if (jobs[i].JOB_ID > maxId) {
+                maxId = jobs[i].JOB_ID;
+                job_idx_in_jobs = i;
+            }
+        }
+
+
+
+    }
+    else{
+        for (int j = 0; j < JOBS_NUM_MAX ; ++j) {
+            if (jobs[j].JOB_ID == job_id ){
+                job_idx_in_jobs = j;
+                break;
+            }
+        }
+        // if after the loop we didn't find the job_ID, print err
+        if (job_idx_in_jobs == -1){
+            char* msg;
+            sprintf(msg, "job id %d does not exist", job_id);
+            perrorSmash("fg",msg);
+            return -1; //TODO error val
+        }
+
+    }
+
+    //now we know job_idx_in_jobs
+    //TODO: verify print format !
+    print("%s %d", jobs[job_idx_in_jobs].cmd, jobs[job_idx_in_jobs].PID);
+2
+    if (jobs[job_idx_in_jobs].state == JOB_STATE_STP){ // if stopped, send it SIGCONT
+        jobs[job_idx_in_jobs].state == JOB_STATE_FG;
+        my_system_call(SYS_KILL,jobs[job_idx_in_jobs].PID,SIGCONT);
+        print("%s", jobs[job_idx_in_jobs].cmd);
+
+    }
+    else{
+        jobs[job_idx_in_jobs].state == JOB_STATE_FG;
+    }
+
+    // TODO  actually run the JOB?
+
+
+}
+
+
+int bg(job *jobs, int job_id){
+
+
+
+}
+
+int quit(job *jobs, int nargs ,char* arg){// kill the smash
+    if (nargs>1){
+        perrorSmash("quit","expected 0 or 1 arguments");
+        return ERROR;
+    }
+    if (arg == "kill"){
+        //kill jobs in order.
+        for (int i = 0; i < JOBS_NUM_MAX; ++i) {
+            printf("%d %s - ",jobs[i].JOB_ID,jobs[i].cmd);
+            my_system_call(SYS_KILL, job_list[i].PID, SIGTERM); //send sigterm
+            printf("sending SIGTERM... ");
+
+
+
+
+            // now check status every sec
+
+            int terminated_gracefully = 0;
+            for (int elapsed_time = 0; elapsed_time < GRACE_PERIOD; elapsed_time += CHECK_INTERVAL_SECONDS) {
+                int status;
+                int result = my_system_call(SYS_WAITPID, job_list[i].PID, &status,WNOHANG); //send sigterm
+                if (result == job_list[i].PID) {
+                    // Process terminated and was successfully reaped
+                   terminated_gracefully = 1;
+                    break; // Exit the grace period loop
+                } else if (result == 0) {
+                    // Process is still running, wait for the interval
+                    sleep(CHECK_INTERVAL_SECONDS);
+                }
+                /* not needed
+                 * else if (result == -1 && errno == ECHILD) {
+                    // Process likely terminated/reaped before SIGTERM or immediately after
+                    terminated_gracefully = 1;
+                    break; // Exit the grace period loop
+                } else if (result == -1) {
+                    perror("waitpid error");
+                    terminated_gracefully = 1; // Treat as failure and stop check
+                    break;
+                }
+                 */
+            }
+            if (!terminated_gracefully){ //process still alive.. KILL!
+                my_system_call(SYS_KILL, job_list[i].PID, SIGKILL); //send sigkill
+                printf("sending SIGKILL... done");
+            }
+
+
+            printf("\n");
+        }
+    }
+    else{
+        perrorSmash("quit","unexpected arguments");
+        return ERROR;
+    }
+    // return error to signal QUITTING
+    return QUITVAL;
+
+
+}
+
+int showpid(cmd cmd_obj) {
+    if (cmd_obj.nargs != 0) {
+        perrorSmash(const char* "showpid", const char* "expected 0 arguments");
+        // fprintf(stderr, "smash error: showpid: expected 0 argument");
+        return -1;
+    }
+    else {
+        pid_t smash_pid = getpid();
+        printf ("smash pid is %ld\n", (long) smash_pid);
+        return smash_pid;
+    }
+}
+
+int pwd(cmd cmd_obj) {
+    if (cmd_obj.nargs != 0) {
+        perrorSmash(const char* "pwd", const char* "expected 0 arguments");
+        // fprintf(stderr, "smash error: pwd: expected 0 argument");
+        return -1;
+    }
+    else {
+
+        char* pwd = (char*)malloc(CMD_LENGTH_MAX); // is there a clear defenition of how long can it be ??
+        if (pwd == NULL) {
+            perrorSmash(const char* "pwd", const char* "malloc failed");
+            exit(-1);
+        }
+        if (getcwd(pwd, CMD_LENGTH_MAX) != NULL) {
+            printf("%s\n", pwd);
+            free(pwd);
+            return 0;
+        }
+        else {
+            perrorSmash(const char* "pwd", const char* "getcwd failed");
+            free(pwd);
+            return -1;
+        }
+    }
+}
+
+int kill(cmd cmd_obj, int signum, int job_id) {
+    if ((cmd_obj.nargs != 2) || (cmd_obj.args[1] < 1) || (cmd_obj.args[1] > 64) ) { // make sure signum is a valid signum (1<=args[1]<=64)
+        perrorSmash(const char* "kill", const char* "invalid arguments");
+
+        return -1;
+    }
+    for (int i=0 ; i < 100 ; i++){
+        if (job_id == i && job_list[i] != NULL ){
+            my_system_call(5, job_list[i].PID, signum); //send signal
+            printf("signal %d was sent to pid %ld", signum, job_list[i].PID); // maybe we should define all global variables in commands.h ??
+            return 0;
+        }
+    }
+    char error_msg[MAX_ERROR_LEN] = {0}; // longest message should be no longer than 25
+    snprintf(error_msg, MAX_ERROR_LEN, "job id %d does not exist", job_id);
+
+    perrorSmash(const char* "kill", const char* error_msg);
+    return -1;
+}
+
+int cd (cmd cmd_obj, char* path) {
+
+    if (cmd_obj.nargs != 1) {
+        perrorSmash(const char* "cd", const char* "expected 1 arguments");
+        return -1;
+    }
+    else {
+        if (cmd.args[1] == '-'){
+            if (old_cd == NULL) {
+                perrorSmash(const char* "cd", const char* "old pwd not set");
+                return -1;
+            }
+            else {
+                printf("%s \n", old_path); // TODO: change the dir
+                return 0;
+            }
+        }
+        else if (cmd.args[1] == '..') {
+            char* pwd[CMD_LENGTH_MAX] = {0}; // is there a clear defenition of how long can it be ??
+            if (getcwd(pwd, CMD_LENGTH_MAX) != NULL) {
+                char* delimiters = "/";
+                //char path_to_print [CMD_LENGTH_MAX] = {0};
+                char* last_dir = strrchr(path, delimiters);
+                if (strcmp(*last_dir, path)){
+                    return 0;
+                }
+                else {
+                    *last_dir = '/0';
+                    printf("pwd\n%s \n", path); // change the dir
+                    return 0;
+                }
+
+            }
+
+        }
+        else {
+            DIR* dir = opendir(path);
+            if (dir == NULL){ // check if path valid
+                if (errno == ENOENT){
+                    perrorSmash(const char* "cd", const char* "target directory does not exist");
+                }
+
+            }
+            else if (){
+
+            } // check if path to a dir or a file
+            else {
+                printf("pwd\n%s\n", path);
+                return 0;
+            }
+
+        }
+
+    }
+
+}
+
+int jobs(cmd cmd_obj){
+    if (cmd_obj.nargs != 0){
+        perrorSmash(const char* "jobs", const char* "expected 0 arguments");
+        return -1;
+    }
+    else {
+        for (int i = 0 ; i<100 ; i++){
+            if (jobs_list[i] != NULL){
+                if (jobs_list[i].state == JOB_STATE_STP){
+                    printf("[%d] %s: %ld %d secs (stopped)\n", i, jobs_list[i].cmd, jobs_list[i].PID, jobs_list[i].time)
+                }
+                else{
+                    printf("[%d] %s: %ld %d secs\n", i, jobs_list[i].cmd, jobs_list[i].PID, jobs_list[i].time)
+                }
+            }
+        }
+        return 0;
+    }
+}
+
+
 int command_selector(cmd cmd_after_parse){
-    char[80] cmd_args;
-    switch (cmd_after_parse.cmd) {
-        case cmd_DB[0] :
-            showpid();
-            break;
-        case cmd_DB[1] :
-            pwd();
-            break;
-        case cmd_DB[2] :
-            cd();
-            break;
-        case cmd_DB[3] :
-            jobs();
-            break;
-        case cmd_DB[4] :
-            kill();
-            break;
-        case cmd_DB[5] :
-            //TODO: add check at parser for #args, and pass -1 if no args
-            fg();
-            break;
-        case cmd_DB[6] :
-            bg();
-            break;
-        case cmd_DB[7] :
-            quit();
-            break;
-        case cmd_DB[8] :
-            diff();
-            break;
-        case cmd_DB[9] :
-            alias();
-            break;
-        case cmd_DB[10]:
-            unalias();
-            break;
+
+
+    if ( strcmp(cmd_after_parse.cmd,cmd_DB[0] ) == 0 ){
+        // showpid();
+    }
+    else if ( strcmp(cmd_after_parse.cmd,cmd_DB[1] ) == 0  ) {
+        // pwd();
+    }
+    else if ( strcmp(cmd_after_parse.cmd,cmd_DB[2] ) == 0  ) {
+        // cd();
+    }
+    else if ( strcmp(cmd_after_parse.cmd,cmd_DB[3] ) == 0  ) {
+        // jobs();
+    }
+    else if ( strcmp(cmd_after_parse.cmd,cmd_DB[4] ) == 0  ) {
+        // kill();
+    }
+    else if ( strcmp(cmd_after_parse.cmd,cmd_DB[5]  ) == 0  ) {
+        //TODO: add check at parser for #args, and pass -1 if no args
+        //  fg();
+    }
+    else if ( strcmp(cmd_after_parse.cmd,cmd_DB[6] ) == 0  ) {
+        //  bg();
+    }
+    else if ( strcmp(cmd_after_parse.cmd,cmd_DB[7] ) == 0 ) {
+        // if( quit(...) == QUITVAL) return QUITVAL ; //SIG TO END the program
+        // return ERROR;
+    }
+    else if ( strcmp(cmd_after_parse.cmd,cmd_DB[8]  ) == 0 ) {
+        //   diff();
+    }
+    else if ( strcmp(cmd_after_parse.cmd,cmd_DB[9] ) == 0  ) {
+        //   alias();
+    }
+    else if ( strcmp(cmd_after_parse.cmd,cmd_DB[10] ) == 0  ) {
+        //   unalias();
     }
 
 
@@ -119,12 +437,12 @@ cmd parseCmdExample(char* line)
             break;
         cmd_obj.nargs++;
     }
-	for (i=0 ; i<11 ; i++) {
+	for (int i=0 ; i<11 ; i++) {
 		if (!strcmp(cmd_DB[i], cmd_obj.cmd)){
 			cmd_obj.internal = 1;
 		}
 	}
-	for (i = 19 ; i>0 ; i--) {
+	for (int i = 19 ; i>0 ; i--) {
 		if (cmd_obj.args[i] == "&"){
 			cmd_obj.bg = 1;
 			cmd_obj.nargs--;
@@ -147,6 +465,7 @@ cmd parseCmdExample(char* line)
     */
 
     //Tal note: I assume we will return a struct  (command ) with the cmd, args, nargs and bool bg
+    return cmd_obj;
 }
 /*
 fg
@@ -157,247 +476,6 @@ Alias
 Unalias
  */
 
-
-
-int diff(char* args[ARGS_NUM_MAX],int nargs){
-    if (nargs!=2){
-        perrorSmash("diff","expected 2 arguments");
-        return -1 ; // TODO :VERIFY WHAT RETVAL SHOULD BE ON ERROR
-    }
-    path1 = args[0];
-    path2 = args[1];
-
-    //opening both files;
-    fd1 = my_system_call(SYS_OPEN,path1,O_RDONLY);
-    fd2 = my_system_call(SYS_OPEN,path2,O_RDONLY);
-
-    if ( ( fd1 == ERROR &&  errno==ENOENT ) || ( fd2 == ERROR &&  errno==ENOENT ) ){
-        perrorSmash("diff","expected valid paths for files");
-        return -1 ; // TODO :VERIFY WHAT RETVAL SHOULD BE ON ERROR
-    }
-    const size_t CHUNK_SIZE = 4096;
-    char buffer1[CHUNK_SIZE];
-    char buffer2[CHUNK_SIZE];
-    ssize_t bytes_read1, bytes_read2;
-
-    while (1) {
-        bytes_read1 = my_system_call(SYS_READ, fd1, buffer1, CHUNK_SIZE);
-        bytes_read2 = my_system_call(SYS_READ, fd2, buffer2, CHUNK_SIZE);
-
-        if ( ( bytes_read1 == ERROR &&  errno==EISDIR ) || ( bytes_read2 == ERROR &&  errno==EISDIR ) ){
-            perrorSmash("diff","paths are not files");
-            return -1 ;// TODO :VERIFY WHAT RETVAL SHOULD BE ON ERROR
-        }
-        if (bytes_read1 != bytes_read2) { //different sizes, so different ofc
-            my_system_call(SYS_CLOSE, fd1);
-            my_system_call(SYS_CLOSE, fd2);
-            return DIFFERENT;
-        }
-        if ( memcmp(buffer1, buffer2, bytes_read1) != IDENTICAL ) { //chunks are not identical
-            my_system_call(SYS_CLOSE, fd1);
-            my_system_call(SYS_CLOSE, fd2);
-            return DIFFERENT;
-        }
-        if ( ( bytes_read1 == EOF && bytes_read2 != EOF) || bytes_read2 == EOF && bytes_read1 != EOF) ) { //ended reading one file but not the other.
-            my_system_call(SYS_CLOSE, fd1);
-            my_system_call(SYS_CLOSE, fd2);
-            return DIFFERENT;
-        }
-        if (bytes_read1 == EOF && bytes_read2 == EOF) { //ended reading both files no errors so far
-            my_system_call(SYS_CLOSE, fd1);
-            my_system_call(SYS_CLOSE, fd2);
-            return IDENTICAL;
-        }
-
-    }
-}
-
-int  fg(job *jobs, int job_id) {
-
-    int job_idx_in_jobs = -1;
-    if (job_id == NOARGSVAL ){
-        int maxId = jobs[0].JOB_ID;
-        for (int i = 1; i < size; i++) {
-            if (jobs[i].JOB_ID > maxId) {
-                maxId = jobs[i].JOB_ID;
-                job_idx_in_jobs = i;
-            }
-        }
-    }
-    else{
-        for (int j = 0; j < JOBS_NUM_MAX ; ++j) {
-            if (jobs[j].JOB_ID == job_id ){
-                job_idx_in_jobs = j;
-                break;
-            }
-        }
-
-    }
-
-    //now we know job_idx_in_jobs
-    //TODO: verify print format !
-    print("%s %d", jobs[job_idx_in_jobs].cmd, jobs[job_idx_in_jobs].PID);
-
-    if (jobs[job_idx_in_jobs].state == JOB_STATE_STP){ // if stopped, send it SIGCONT
-        jobs[job_idx_in_jobs].state == JOB_STATE_FG;
-        my_system_call(SYS_KILL,jobs[job_idx_in_jobs].PID,SIGCONT);
-        print("%s", jobs[job_idx_in_jobs].cmd);
-
-    }
-    else{
-        jobs[job_idx_in_jobs].state == JOB_STATE_FG;
-
-    }
-
-}
-
-int quit(int nargs ,char* arg){
-    if (nargs>1){
-        perrorSmash("quit","expected 0 or 1 arguments");
-    }
-    if (arg = "kill"){
-        //main thing
-    }
-    else{
-        perrorSmash("quit","unexpected arguments")
-    }
-}
-
-int showpid(cmd cmd_obj) {
-	if (cmd_obj.nargs != 0) {
-		perrorSmash(const char* "showpid", const char* "expected 0 arguments");
-		// fprintf(stderr, "smash error: showpid: expected 0 argument");
-		return -1;
-	}
-	else {
-		pid_t smash_pid = getpid();
-		printf ("smash pid is %ld\n", (long) smash_pid);
-		return smash_pid;
-	}
-}
-
-int pwd(cmd cmd_obj) {
-	if (cmd_obj.nargs != 0) {
-		perrorSmash(const char* "pwd", const char* "expected 0 arguments");
-		// fprintf(stderr, "smash error: pwd: expected 0 argument");
-		return -1;
-	}
-	else {
-		
-		char* pwd = (char*)malloc(CMD_LENGTH_MAX); // is there a clear defenition of how long can it be ??
-		if (pwd == NULL) {
-			perrorSmash(const char* "pwd", const char* "malloc failed");
-			exit(-1);
-    	}
-		if (getcwd(pwd, CMD_LENGTH_MAX) != NULL) {
-        	printf("%s\n", pwd);
-			free(pwd);
-			return 0;
-    	} 
-		else {
-			perrorSmash(const char* "pwd", const char* "getcwd failed");
-        	free(pwd);
-			return -1;
-		}
-	}
-}
-
-int kill(cmd cmd_obj, int signum, int job_id) {
-	if ((cmd_obj.nargs != 2) || (cmd_obj.args[1] < 1) || (cmd_obj.args[1] > 64) ) { // make sure signum is a valid signum (1<=args[1]<=64)
-		perrorSmash(const char* "kill", const char* "invalid arguments");
-
-		return -1;
-	}
-	for (i=0 ; i < 100 ; i++){
-		if (job_id == i && job_list[i] != NULL ){
-			my_system_call(5, job_list[i].PID, signum); //send signal
-			printf("signal %d was sent to pid %ld", signum, job_list[i].PID); // maybe we should define all global variables in commands.h ??
-			return 0;
-		}
-	}
-	char error_msg[MAX_ERROR_LEN] = {0}; // longest message should be no longer than 25
-	snprintf(error_msg, MAX_ERROR_LEN, "job id %d does not exist", job_id);
-
-	perrorSmash(const char* "kill", const char* error_msg);
-	return -1;
-}
-
-int cd (cmd cmd_obj, char* path) {
-
-	if (cmd_obj.nargs != 1) {
-		perrorSmash(const char* "cd", const char* "expected 1 arguments");
-		return -1;
-	}
-	else {
-		if (cmd.args[1] == '-'){
-			if (old_cd == NULL) {
-				perrorSmash(const char* "cd", const char* "old pwd not set");
-				return -1;
-    		}
-			else {
-				printf("%s \n", old_path); // TODO: change the dir
-				return 0;
-			}
-		}
-		else if (cmd.args[1] == '..') {
-			char* pwd[CMD_LENGTH_MAX] = {0}; // is there a clear defenition of how long can it be ??
-			if (getcwd(pwd, CMD_LENGTH_MAX) != NULL) {
-				char* delimiters = "/"; 
-				//char path_to_print [CMD_LENGTH_MAX] = {0};
-				char* last_dir = strrchr(path, delimiters);
-				if (strcmp(*last_dir, path)){
-					return 0;
-				}
-				else {
-					*last_dir = '/0';
-					printf("pwd\n%s \n", path); // change the dir
-					return 0;
-				}
-				
-    		} 
-
-		}
-		else {
-			DIR* dir = opendir(path);
-			if (dir == NULL){ // check if path valid
-				if (errno == ENOENT){
-					perrorSmash(const char* "cd", const char* "target directory does not exist");
-				}
-
-			}
-			else if (){
-
-			} // check if path to a dir or a file
-			else {
-				printf("pwd\n%s\n", path);
-				return 0;
-			}
-		
-		}
-		
-	}
-
-}
-
-int jobs(cmd cmd_obj){
-	if (cmd_obj.nargs != 0){
-		perrorSmash(const char* "jobs", const char* "expected 0 arguments");
-		return -1;	
-	}
-	else {
-		for (i = 0 ; i<100 ; i++){
-			if (jobs_list[i] != NULL){
-				if (jobs_list[i].state == 3){
-					printf("[%d] %s: %ld %d secs (stopped)\n", i, jobs_list[i].cmd, jobs_list[i].PID, jobs_list[i].time)
-				}
-				else{
-					printf("[%d] %s: %ld %d secs\n", i, jobs_list[i].cmd, jobs_list[i].PID, jobs_list[i].time)
-				}
-			}
-		}
-		return 0;
-	}
-}
 
 
 

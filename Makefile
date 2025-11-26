@@ -5,6 +5,9 @@ OBJS = $(SRCS:.c=.o)
 TARGET = smash
 
 all: $(TARGET)
+commands.o: commands.h
+signals.o: signals.h
+smash.o: commands.h signals.h my_system_call.h
 
 $(TARGET): $(OBJS)
 	$(CC) $(CFLAGS) $(OBJS) -o $(TARGET)

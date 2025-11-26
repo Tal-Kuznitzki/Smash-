@@ -11,6 +11,7 @@
 #define JOB_STATE_FG 1
 #define JOB_STATE_BG 2
 #define JOB_STATE_STP 3
+#define QUITVAL 2
 
 
 /*=============================================================================
@@ -25,8 +26,7 @@
 * global variables & data structures
 =============================================================================*/
 char _line[CMD_LENGTH_MAX];
-job jobs_list[100];
-current_job_index=0; // TODO update accordingly
+
 
 
 /*=============================================================================
@@ -42,15 +42,14 @@ int main(int argc, char* argv[])
         fgets(_line, CMD_LENGTH_MAX, stdin);
         strcpy(_cmd, _line);
         //execute command
-
-        // TODO: input parser !!!
-
-
         cmd cmd_after_parse = parseCmdExample(_cmd);
 
         if (cmd_after_parse.internal) { //internal
             if(cmd_after_parse.bg == 0 ){ //internal-fg
-                command_selector(cmd_after_parse);
+                int output = command_selector(cmd_after_parse);
+                if (output == QUITVAL ){
+                    break; //we end the program
+                }
             }
             else { //internal-bg
                 int pid_internal_bg = my_system_call(1); // FORK
@@ -67,8 +66,9 @@ int main(int argc, char* argv[])
                     bg_internal_job.PID = pid_internal_bg;
                     bg_internal_job.cmd = cmd_after_parse;
                     bg_internal_job.state = JOB_STATE_BG ;
-
                     jobs_list[bg_internal_job.JOB_ID]= bg_internal_job ;
+                    bg_internal_job.time = time() ;
+
 
                 }
 
@@ -85,6 +85,7 @@ int main(int argc, char* argv[])
                 if (pid_bg == 0 ) //if son - run_program in a new proc
                 {
                     setpgrp();
+                    job bg_external_job;
                     my_system_call(2,cmd_after_parse);
                     //TODO ERROR CHAINING TO OUTSIDE
                     current_job_index = (current_job_index>bg_external_job.JOB_ID) ? bg_external_job.JOB_ID : current_job_index ;
@@ -101,6 +102,7 @@ int main(int argc, char* argv[])
                     bg_external_job.state = JOB_STATE_BG ;
 
                     jobs_list[bg_external_job.JOB_ID]= bg_external_job ;
+                    bg_internal_job.time = time() ;
 
                 }
 
@@ -132,7 +134,7 @@ int main(int argc, char* argv[])
                     fg_external_job.state = JOB_STATE_FG ;
 
                     jobs_list[fg_external_job.JOB_ID]= fg_external_job ;
-                    waitpid(pid_fg);
+                    my_system_call(SYS_WAITPID,pid_fg); //TODO verify
                     current_job_index = (current_job_index>fg_external_job.JOB_ID) ? fg_external_job.JOB_ID : current_job_index ;
                     jobs_list[fg_external_job.JOB_ID] = NULL ;
                 }

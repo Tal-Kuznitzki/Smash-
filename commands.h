@@ -5,10 +5,27 @@
 =============================================================================*/
 #include <stdlib.h>
 #include <stdio.h>
+#include <time.h>
 
 #define CMD_LENGTH_MAX 120
 #define ARGS_NUM_MAX 20
 #define JOBS_NUM_MAX 100
+
+#define SYS_FORK     1
+#define SYS_EXECVP   2
+#define SYS_WAITPID  3
+#define SYS_SIGNAL   4
+#define SYS_KILL     5
+#define SYS_PIPE     6
+#define SYS_READ     7
+#define SYS_WRITE    8
+#define SYS_OPEN     9
+#define SYS_CLOSE    10
+#define DIFFERENT 1
+#define IDENTICAL 0
+#define EOF_READ 0
+#define QUITVAL 2
+
 
 /*=============================================================================
 * error handling - some useful macros and examples of error handling,
@@ -41,16 +58,16 @@ typedef struct job {
     int JOB_ID;
     char cmd[80];
     int state; // 1 fg  2 bg 3 stopped
-    int time;
+    time_t time;
 } job ;
-//TODO add structs to the H file!
+
 
 typedef struct cmd {
     char* cmd[80];
     int nargs;
-    char* args[ARGS_NUM_MAX]={0};
+    char* args[ARGS_NUM_MAX];
     int bg; //1 - bg 0 - fg
-    int internal=0 ; // 1 internal  0 -external
+    int internal ; // 1 internal  0 -external
     //TODO maybe add a pointer to the cmd ??
 } cmd ;
 
@@ -72,18 +89,11 @@ typedef enum {
 /*=============================================================================
 * global functions
 =============================================================================*/
-typedef struct job {
-    int PID;
-    int JOB_ID;
-    char cmd[80];
-    int state; // 1 fg, 2 bg, 3 stopped
-} job;
-
 cmd parseCommandExample(char* line);
 int command_selector(cmd cmd_after_parse);
 void perrorSmash(const char* cmd, const char* msg);
-int diff(char* args[MAX_ARGS],int nargs);
-int  fg(job *jobs, int job_id);
+int diff(char* args[ARGS_NUM_MAX],int nargs);
+int fg(job *jobs, int job_id, int nargs)
 int quit(int nargs ,char* arg);
 int showpid(cmd cmd_obj);
 int pwd(cmd cmd_obj);
