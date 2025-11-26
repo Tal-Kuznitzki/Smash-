@@ -34,14 +34,11 @@
 #define O_RDONLY 0
 //ERRORs
 #define NOARGSVAL -1
-#define ERROR -1
 #define EISDIR 21
 
 #define JOB_STATE_FG 1
 #define JOB_STATE_BG 2
 #define JOB_STATE_STP 3
-#define QUITVAL 2
-
 const char* cmd_DB[11]= {"showpid","pwd","cd","jobs","kill","fg","bg","quit","diff","alias","unalias" } ;
 char old_cd[CMD_LENGTH_MAX] = {0};
 char current_cd[CMD_LENGTH_MAX] = {0};
@@ -113,7 +110,7 @@ int fg(job *jobs, int job_id, int nargs) {
     int job_idx_in_jobs = -1;
     if (job_id == NOARGSVAL ){
         int maxId = jobs[0].JOB_ID;
-        if ( jobs[0] == NULL){// TODO verify if this is the correct way to verify empty joblist
+        if ( jobs[0] == NULL){// TODO is this the best way to verify empty joblist????
             perrorSmash("fg"," jobs list is empty");
             return -1; //TODO error val
         }
@@ -136,23 +133,23 @@ int fg(job *jobs, int job_id, int nargs) {
             char* msg;
             sprintf(msg, "job id %d does not exist", job_id);
             perrorSmash("fg",msg);
-            return -1; //TODO error val
+            return ERROR; //TODO error val
         }
 
     }
 
     //now we know job_idx_in_jobs
-    //TODO: verify print format !
-    print("%s %d", jobs[job_idx_in_jobs].cmd, jobs[job_idx_in_jobs].PID);
+    //TODO: verify print format
+    printf("%s %d", jobs[job_idx_in_jobs].cmd, jobs[job_idx_in_jobs].PID);
 2
     if (jobs[job_idx_in_jobs].state == JOB_STATE_STP){ // if stopped, send it SIGCONT
         jobs[job_idx_in_jobs].state = JOB_STATE_FG;
         my_system_call(SYS_KILL,jobs[job_idx_in_jobs].PID,SIGCONT);
-        print("%s", jobs[job_idx_in_jobs].cmd);
+        printf("%s", jobs[job_idx_in_jobs].cmd);
 
     }
     else{
-        jobs[job_idx_in_jobs].state == JOB_STATE_FG;
+        jobs[job_idx_in_jobs].state = JOB_STATE_FG;
     }
 
     // TODO  actually run the JOB?
@@ -161,10 +158,58 @@ int fg(job *jobs, int job_id, int nargs) {
 }
 
 
-int bg(job *jobs, int job_id){
+int bg(job *jobs, int job_id, int nargs){
 
+    if (nargs > 1 ){
+        perrorSmash("bg","invalid arguments");
+        return ERROR;
+    }
+    int job_idx_in_jobs = -1;
+    if (job_id == NOARGSVAL ){
+        int maxId = jobs[0].JOB_ID;
+        for (int i = 1; i < JOBS_NUM_MAX; i++) {
+            // TODO: MAKE SURE REGARDING NO JOB_ID AND NO JOB IN STOPPED, BECAUSE WE SAID IT IS EQUAL TO MAX, ALSO MAKE SURE ARG FORMAT IS OKAY
 
+            if ( (jobs[i].JOB_ID!=NULL ) &&  (jobs[i].JOB_ID > maxId )   ) {
+                maxId = jobs[i].JOB_ID;
+                job_idx_in_jobs = i;
+            }
+        }
+        if ( (job_idx_in_jobs !=ERROR) && (jobs[job_idx_in_jobs].state != JOB_STATE_STP )){
+            char* msg;
+            sprintf(msg, "job id %d is already in background", job_id);
+            perrorSmash("bg",msg);
+            return ERROR;
+        }
+    }
+    else{
+        for (int j = 0; j < JOBS_NUM_MAX ; ++j) {
+            if (jobs[j].JOB_ID == job_id ){
+                job_idx_in_jobs = j;
+                break;
+            }
+        }
 
+        if (job_idx_in_jobs == ERROR){  // if after the loop we didn't find the job_ID, print err
+            char* msg;
+            sprintf(msg, "job id %d does not exist", job_id);
+            perrorSmash("bg",msg);
+            return ERROR;
+        }
+        else{ //in case we found the JOB_ID, verify it is stopped.
+
+            if (jobs[job_idx_in_jobs].state != JOB_STATE_STP){ //if not stopped, err
+                char* msg;
+                sprintf(msg, "job id %d is already in background", job_id);
+                perrorSmash("bg",msg);
+                return ERROR;
+            }
+        }
+    }
+    // if alles gut
+    printf("%s %d", jobs[job_idx_in_jobs].cmd, jobs[job_idx_in_jobs].PID);
+    my_system_call(SYS_KILL,jobs[job_idx_in_jobs].PID,SIGCONT); //sending SIGCONT to the stopped job
+    jobs[job_idx_in_jobs].state =  JOB_STATE_BG;
 }
 
 int quit(job *jobs, int nargs ,char* arg){// kill the smash
@@ -172,7 +217,7 @@ int quit(job *jobs, int nargs ,char* arg){// kill the smash
         perrorSmash("quit","expected 0 or 1 arguments");
         return ERROR;
     }
-    if (arg == "kill"){
+    if (strcmp(arg,"kill") == 0){
         //kill jobs in order.
         for (int i = 0; i < JOBS_NUM_MAX; ++i) {
             printf("%d %s - ",jobs[i].JOB_ID,jobs[i].cmd);
@@ -346,7 +391,7 @@ int cd (cmd cmd_obj, char* path) {
 int jobs(cmd cmd_obj){
     if (cmd_obj.nargs != 0){
         perrorSmash(const char* "jobs", const char* "expected 0 arguments");
-        return -1;
+        return ERROR;
     }
     else {
         for (int i = 0 ; i<100 ; i++){

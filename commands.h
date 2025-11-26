@@ -90,12 +90,13 @@ typedef enum {
 /*=============================================================================
 * global functions
 =============================================================================*/
-cmd parseCommandExample(char* line);
+cmd* parseCommandExample(char* line);
 int command_selector(cmd cmd_after_parse);
 void perrorSmash(const char* cmd, const char* msg);
 int diff(char* args[ARGS_NUM_MAX],int nargs);
 int fg(job *jobs, int job_id, int nargs);
-int quit(job *jobs, int nargs ,char* arg)
+int bg(job *jobs, int job_id);
+int quit(job *jobs, int nargs ,char* arg);
 int showpid(cmd cmd_obj);
 int pwd(cmd cmd_obj);
 int kill(cmd cmd_obj, int signum, int job_id);

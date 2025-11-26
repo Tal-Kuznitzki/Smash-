@@ -37,7 +37,7 @@ int main(int argc, char* argv[])
 
     char _cmd[CMD_LENGTH_MAX];
     struct sigaction sa = { .sa_handler = &sigintHandler };
-    sigaction(CTRLZ || CTRLC   , &sa, NULL);  //TODO WHERE THIS GOES?!
+     //sigaction(CTRLZ || CTRLC   , &sa, NULL);  //TODO WHERE THIS GOES?!
     job_to_fg_pid = -1;
     last_fg_cmd = NULL;
     int end_val=0;
@@ -81,7 +81,7 @@ int main(int argc, char* argv[])
                         bg_internal_job.cmd = cmd_after_parse;
                         bg_internal_job.state = JOB_STATE_BG ;
                         jobs_list[bg_internal_job.JOB_ID]= bg_internal_job ;
-                        bg_internal_job.time = time() ;
+                        time(bg_internal_job.time) ;
 
 
                     }
@@ -113,7 +113,7 @@ int main(int argc, char* argv[])
                         bg_external_job.state = JOB_STATE_BG ;
 
                         jobs_list[bg_external_job.JOB_ID]= bg_external_job ;
-                        bg_internal_job.time = time() ;
+                        time(bg_internal_job.time) ;
 
                     }
                 }
