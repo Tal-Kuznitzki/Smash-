@@ -363,12 +363,12 @@ int cd (cmd cmd_obj) {
                 char delimiters = '/';
                 //char path_to_print [CMD_LENGTH_MAX] = {0};
                 char* last_dir = strrchr(current_cd, delimiters);
-                if (strcmp(*last_dir, current_cd)){
+                if (strcmp(last_dir, current_cd)){
                     return 0; // do we need to add print of current dir?
                 }
                 else {
 					strcpy(old_cd, current_cd); //the full og path - will be noe old_cd
-                    *last_dir = '/0'; //cut the last part, also update current_cd
+                    *last_dir = '\0'; //cut the last part, also update current_cd
 					chdir(current_cd); //move to home dir
                     printf("pwd\n%s \n", current_cd); 
                     return 0;
@@ -413,12 +413,14 @@ int jobs(cmd cmd_obj){
 		}
     else {
         for (int i = 0 ; i<100 ; i++){
+			time_t curr_time = time.time();
             if (jobs_list[i] != NULL){
+				float diff = difftime(curr_time, jobs_list[i]->time);
                 if (jobs_list[i]->state == JOB_STATE_STP){
-                    printf("[%d] %s: %d %d secs (stopped)\n", i, jobs_list[i]->cmd, jobs_list[i]->PID, jobs_list[i]->time);
+                    printf("[%d] %s: %d %f secs (stopped)\n", i, jobs_list[i]->cmd, jobs_list[i]->PID, diff);
                 }
                 else{
-                    printf("[%d] %s: %d %d secs\n", i, jobs_list[i]->cmd, jobs_list[i]->PID, jobs_list[i]->time);
+                    printf("[%d] %s: %d %f secs\n", i, jobs_list[i]->cmd, jobs_list[i]->PID, diff);
                 }
             }
         }
@@ -569,6 +571,7 @@ cmd* parseCmdExample(char* line)
     */
     return cmd_list;
 }
+
 
 
 
