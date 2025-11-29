@@ -293,7 +293,7 @@ int pwd(cmd cmd_obj) {
     }
     else {
 
-        char* pwd = (char*)malloc(CMD_LENGTH_MAX); // is there a clear defenition of how long can it be ??
+        char* pwd = (char*)malloc(CMD_LENGTH_MAX); 
         if (pwd == NULL) {
             perrorSmash(const char* "pwd", const char* "malloc failed");
             exit(-1);
@@ -311,7 +311,9 @@ int pwd(cmd cmd_obj) {
     }
 }
 
-int kill(cmd cmd_obj, int signum, int job_id) {
+int kill(cmd cmd_obj) {
+	int signum = cmd_obj.args[1];
+	int job_id = cmd_obj.args[2];
     if ((cmd_obj.nargs != 2) || (cmd_obj.args[1] < 1) || (cmd_obj.args[1] > 64) ) { // make sure signum is a valid signum (1<=args[1]<=64)
         perrorSmash(const char* "kill", const char* "invalid arguments");
 
@@ -331,35 +333,43 @@ int kill(cmd cmd_obj, int signum, int job_id) {
     return -1;
 }
 
-int cd (cmd cmd_obj, char* path) {
-
+int cd (cmd cmd_obj) {
     if (cmd_obj.nargs != 1) {
         perrorSmash(const char* "cd", const char* "expected 1 arguments");
         return -1;
     }
     else {
+		getcwd(current_cd, CMD_LENGTH_MAX);
+		char* temp [CMD_LENGTH_MAX];
+		char* path = cmd_obj.args[1];
+
         if (cmd.args[1] == '-'){
             if (old_cd == NULL) {
                 perrorSmash(const char* "cd", const char* "old pwd not set");
                 return -1;
             }
             else {
-                printf("%s \n", old_path); // TODO: change the dir
+				chdir(old_cd);
+				printf("%s \n", old_path);
+				strcpy(temp, old_cd);
+				strcpy(old_cd, current_cd);
+				strcpy(current_cd, temp);
                 return 0;
             }
         }
         else if (cmd.args[1] == '..') {
-            char* pwd[CMD_LENGTH_MAX] = {0}; // is there a clear defenition of how long can it be ??
-            if (getcwd(pwd, CMD_LENGTH_MAX) != NULL) {
+            if (current_cd != NULL) {
                 char* delimiters = "/";
                 //char path_to_print [CMD_LENGTH_MAX] = {0};
-                char* last_dir = strrchr(path, delimiters);
-                if (strcmp(*last_dir, path)){
-                    return 0;
+                char* last_dir = strrchr(current_cd, delimiters);
+                if (strcmp(*last_dir, current_cd)){
+                    return 0; // do we need to add print of current dir?
                 }
                 else {
-                    *last_dir = '/0';
-                    printf("pwd\n%s \n", path); // change the dir
+					strcpy(old_cd, current_cd); //the full og path - will be noe old_cd
+                    *last_dir = '/0'; //cut the last part, also update current_cd
+					chdir(current_cd); //move to home dir
+                    printf("pwd\n%s \n", current_cd); 
                     return 0;
                 }
 
@@ -369,16 +379,23 @@ int cd (cmd cmd_obj, char* path) {
         else {
             DIR* dir = opendir(path);
             if (dir == NULL){ // check if path valid
-                if (errno == ENOENT){
+                if (errno == ENOENT){ //if directory doesnt exist
                     perrorSmash(const char* "cd", const char* "target directory does not exist");
                 }
+				else if (errno == ENOTDIR) { //if path is of a file
+					char* error_msg[MAX_ERROR_LEN + CMD_LENGTH_MAX];
+					snprintf(error_msg, MAX_ERROR_LEN + CMD_LENGTH_MAX, "%s: not a directory", path);
+
+					perrorSmash(const char* "cd", const char* error_msg);
+
+				}
 
             }
-            else if (){
-
-            } // check if path to a dir or a file
             else {
+				chdir(path);
                 printf("pwd\n%s\n", path);
+				strcpy(old_cd, current_cd);
+				strcpy(current_cd, path);
                 return 0;
             }
 
@@ -392,7 +409,7 @@ int jobs(cmd cmd_obj){
     if (cmd_obj.nargs != 0){
         perrorSmash(const char* "jobs", const char* "expected 0 arguments");
         return ERROR;
-    }
+		}
     else {
         for (int i = 0 ; i<100 ; i++){
             if (jobs_list[i] != NULL){
