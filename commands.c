@@ -436,19 +436,19 @@ int command_selector(cmd cmd_after_parse){
 
 
     if ( strcmp(cmd_after_parse.cmd,cmd_DB[0] ) == 0 ){
-        // showpid();
+        // showpid(cmd_after_parse);
     }
     else if ( strcmp(cmd_after_parse.cmd,cmd_DB[1] ) == 0  ) {
-        // pwd();
+        // pwd(cmd_after_parse);
     }
     else if ( strcmp(cmd_after_parse.cmd,cmd_DB[2] ) == 0  ) {
-        // cd();
+        // cd(cmd_after_parse);
     }
     else if ( strcmp(cmd_after_parse.cmd,cmd_DB[3] ) == 0  ) {
-        // jobs();
+        // jobs(cmd_after_parse);
     }
     else if ( strcmp(cmd_after_parse.cmd,cmd_DB[4] ) == 0  ) {
-        // kill();
+        // kill(cmd_after_parse);
     }
     else if ( strcmp(cmd_after_parse.cmd,cmd_DB[5]  ) == 0  ) {
         //TODO: add check at parser for #args, and pass -1 if no args
