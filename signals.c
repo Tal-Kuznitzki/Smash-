@@ -1,20 +1,13 @@
 // signals.c
 #include "signals.h"
 #include "commands.h"
+#include "my_system_call.h"
 #include <stdio.h>
 #include <time.h>
 #define JOB_STATE_FG 1
 #define JOB_STATE_STP 3
 #define SIGCHLD 17
 
-struct sigaction
-{
-    void (*sa_handler)(int);
-    void (*sa_sigaction)(int, siginfo_t*, void*);
-    sigset_t sa_mask;
-    int sa_flags;
-    void (*sa_restorer)(void);
-}
 
 int pid_to_sig= -1;
 int job_id_to_sig = 0 ;
@@ -43,17 +36,17 @@ void sigintHandler(int sig){
 
             if (current_job_index<JOBS_NUM_MAX){
 
-                job job_to_be_stopped;
+
                 job_to_be_stopped.cmd = last_fg_cmd.cmd;
                 job_to_be_stopped.PID = pid_to_sig;
                 job_to_be_stopped.JOB_ID = current_job_index;
                 job_to_be_stopped.state = JOB_STATE_STP;
-                job_to_be_stopped.time = time();
-                jobs_list[current_job_index]=job_to_be_stopped;
+                job_to_be_stopped.time = time(NULL);
+                jobs_list[current_job_index]=&job_to_be_stopped;
                 current_job_index++;
 
             }
-            jobs_list[job_id_to_sig].state=JOB_STATE_STP ;
+            jobs_list[job_id_to_sig]->state=JOB_STATE_STP ;
             //TODO handle error!
             printf("process %d was stopped ",pid_to_sig);
 

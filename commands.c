@@ -42,7 +42,7 @@
 const char* cmd_DB[11]= {"showpid","pwd","cd","jobs","kill","fg","bg","quit","diff","alias","unalias" } ;
 char old_cd[CMD_LENGTH_MAX] = {0};
 char current_cd[CMD_LENGTH_MAX] = {0};
-
+cmd cmd_list[ARGS_NUM_MAX]= {0};
 job* jobs_list[100];
 
 
@@ -104,7 +104,6 @@ int diff(char* args[ARGS_NUM_MAX],int nargs){
 }
 
 int fg(int job_id, int nargs) {
-
     if (nargs > 1 ){
         perrorSmash("fg","invalid arguments");
         return -1; //TODO error val
@@ -152,10 +151,8 @@ int fg(int job_id, int nargs) {
     else{
         jobs_list[job_idx_in_jobs]->state = JOB_STATE_FG;
     }
-
-    // TODO  actually run the JOB?
-
-
+    my_system_call(SYS_WAITPID,jobs_list[job_id]->PID);
+    return 0;
 }
 
 int bg(int job_id, int nargs){
@@ -210,6 +207,7 @@ int bg(int job_id, int nargs){
     printf("%s %d", jobs_list[job_idx_in_jobs]->cmd, jobs_list[job_idx_in_jobs]->PID);
     my_system_call(SYS_KILL,jobs_list[job_idx_in_jobs]->PID,SIGCONT); //sending SIGCONT to the stopped job
     jobs_list[job_idx_in_jobs]->state =  JOB_STATE_BG;
+    return 0;
 }
 
 int quit(int nargs ,char* arg){// kill the smash
@@ -337,7 +335,7 @@ int kill(cmd cmd_obj) {
 int cd (cmd cmd_obj) {
     if (cmd_obj.nargs != 1) {
         perrorSmash("cd","expected 1 arguments");
-        return -1;
+        return ERROR;
     }
     else {
 		getcwd(current_cd, CMD_LENGTH_MAX);
@@ -347,7 +345,7 @@ int cd (cmd cmd_obj) {
         if (strcmp(cmd_obj.args[1],"-") == 0){
             if (old_cd == NULL) {
                 perrorSmash("cd","old pwd not set");
-                return -1;
+                return ERROR;
             }
             else {
 				chdir(old_cd);
@@ -388,6 +386,7 @@ int cd (cmd cmd_obj) {
 					snprintf(error_msg, MAX_ERROR_LEN + CMD_LENGTH_MAX, "%s: not a directory", path);
 
 					perrorSmash("cd",error_msg);
+                    return  ERROR;
 
 				}
 
@@ -403,7 +402,6 @@ int cd (cmd cmd_obj) {
         }
 
     }
-
 }
 
 int jobs(cmd cmd_obj){
@@ -430,6 +428,7 @@ int jobs(cmd cmd_obj){
 
 int alias( char* new_cmd_name, char* new_cmd){
 
+    return 0;
 
 }
 
@@ -495,17 +494,17 @@ void perrorSmash(const char* cmd, const char* msg)
 //example function for parsing commands
 cmd* parseCmdExample(char* line)
 {
-    cmd cmd_list[ARGS_NUM_MAX]= {0};
+
 	cmd cmd_obj;
 	cmd_obj.internal = 0;
     char* delimiters = " \t\n"; //parsing should be done by spaces, tabs or newlines
-    cmd_obj.cmd = strtok(line, delimiters); //read strtok documentation - parses string by delimiters
+    strcpy(cmd_obj.cmd,strtok(line, delimiters));//read strtok documentation - parses string by delimiters
     if(!cmd_obj.cmd)
         return INVALID_COMMAND; //this means no tokens were found, most like since command is invalid
 
     cmd_obj.nargs = 0;
     cmd_obj.args[0] = cmd_obj.cmd; //first token before spaces/tabs/newlines should be command name
-    for(int i = 1; i < MAX_ARGS; i++)
+    for(int i = 1; i < ARGS_NUM_MAX; i++)
     {
         cmd_obj.args[i] = strtok(NULL, delimiters); //first arg NULL -> keep tokenizing from previous call
         if(!cmd_obj.args[i])
@@ -549,7 +548,7 @@ cmd* parseCmdExample(char* line)
     }
 
 	for (int i = 19 ; i>0 ; i--) {
-		if (cmd_obj.args[i] == "&"){
+		if ( strcmp(cmd_obj.args[i],"&") == 0 ){
 			cmd_obj.bg = 1;
 			cmd_obj.nargs--;
 		}

@@ -4,7 +4,9 @@
 =============================================================================*/
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
+#include "my_system_call.h"
 #include "commands.h"
 #include "signals.h"
 
@@ -47,11 +49,12 @@ int main(int argc, char* argv[])
         fgets(_line, CMD_LENGTH_MAX, stdin);
         strcpy(_cmd, _line);
         //execute command
-        cmd* cmd_list_after_parse = parseCmdExample(_cmd);
-        cmd_list_indx=0;
+        cmd* cmd_list_after_parse = parseCommandExample(_cmd);
+        int cmd_list_indx=0;
         int retVal_Cmd_tmp=0;
-        while (cmd_list_after_parse[cmd_list_indx]!=NULL){
-            cmd_after_parse=cmd_list_after_parse[cmd_list_indx];
+        job bg_internal_job;
+        while (&cmd_list_after_parse[cmd_list_indx]!=NULL){// TODO IS OKAY?
+             cmd cmd_after_parse=cmd_list_after_parse[cmd_list_indx];
 
             if (cmd_after_parse.internal) { //internal
                 if(cmd_after_parse.bg == 0 ){ //internal-fg
@@ -69,16 +72,21 @@ int main(int argc, char* argv[])
                     int pid_internal_bg = my_system_call(1); // FORK
                     if (pid_internal_bg==0){
                         setpgrp();
-                        command_selector(cmd_after_parse);
+                        int output = command_selector(cmd_after_parse);  // 0 all good -1 error -2 quit
+                        if (output == QUITVAL ){
+                            end_val= QUITVAL;
+                            break; //we end the program
+                        } else if ( output == ERROR  ){
+                            break;
+                        }
                         current_job_index = (current_job_index>bg_internal_job.JOB_ID) ? bg_internal_job.JOB_ID : current_job_index ;
                         jobs_list[bg_internal_job.JOB_ID] = NULL ;
                     }
                     else { //father process
-                        job bg_internal_job;
                         bg_internal_job.JOB_ID = current_job_index ;
                         current_job_index++;
                         bg_internal_job.PID = pid_internal_bg;
-                        bg_internal_job.cmd = cmd_after_parse;
+                        bg_internal_job.cmd = cmd_after_parse.cmd;
                         bg_internal_job.state = JOB_STATE_BG ;
                         jobs_list[bg_internal_job.JOB_ID]= bg_internal_job ;
                         time(bg_internal_job.time) ;

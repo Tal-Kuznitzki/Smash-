@@ -55,6 +55,16 @@ static inline void* _validatedMalloc(size_t size)
 
 
 
+
+
+typedef struct cmd {
+    char cmd[80];
+    int nargs;
+    char* args[ARGS_NUM_MAX];
+    int bg; //1 - bg 0 - fg
+    int internal ; // 1 internal  0 -external
+    //TODO maybe add a pointer to the cmd ??
+} cmd ;
 typedef struct job {
     int PID;
     int JOB_ID;
@@ -63,15 +73,6 @@ typedef struct job {
     time_t time;
 } job ;
 
-
-typedef struct cmd {
-    char* cmd[80];
-    int nargs;
-    char* args[ARGS_NUM_MAX];
-    int bg; //1 - bg 0 - fg
-    int internal ; // 1 internal  0 -external
-    //TODO maybe add a pointer to the cmd ??
-} cmd ;
 
 /*=============================================================================
 * error definitions
@@ -109,6 +110,7 @@ cmd last_fg_cmd; //TODO update in smash
 
 job* jobs_list[100];
 int current_job_index;
-
+cmd cmd_list[ARGS_NUM_MAX];
+job job_to_be_stopped;
 
 #endif //COMMANDS_H
