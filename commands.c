@@ -8,7 +8,7 @@
 #include <unistd.h>
 
 
-#define MAX_ERROR_LEN = 30;
+#define MAX_ERROR_LEN 30
 #define CMD_LENGTH_MAX 120
 #define ARGS_NUM_MAX 20
 #define JOBS_NUM_MAX 100
@@ -43,7 +43,9 @@ const char* cmd_DB[11]= {"showpid","pwd","cd","jobs","kill","fg","bg","quit","di
 char old_cd[CMD_LENGTH_MAX] = {0};
 char current_cd[CMD_LENGTH_MAX] = {0};
 
-job jobs_list[100];
+job* jobs_list[100];
+
+
 int current_job_index=0; // TODO update accordingly
 
 
@@ -101,7 +103,7 @@ int diff(char* args[ARGS_NUM_MAX],int nargs){
     }
 }
 
-int fg(job *jobs, int job_id, int nargs) {
+int fg(int job_id, int nargs) {
 
     if (nargs > 1 ){
         perrorSmash("fg","invalid arguments");
@@ -109,21 +111,21 @@ int fg(job *jobs, int job_id, int nargs) {
     }
     int job_idx_in_jobs = -1;
     if (job_id == NOARGSVAL ){
-        int maxId = jobs[0].JOB_ID;
-        if ( jobs[0] == NULL){// TODO is this the best way to verify empty joblist????
+        int maxId = jobs_list[0]->JOB_ID;
+        if ( jobs_list[0] == NULL){// TODO is this the best way to verify empty joblist????
             perrorSmash("fg"," jobs list is empty");
-            return -1; //TODO error val
+            return ERROR; //TODO error val
         }
         for (int i = 1; i < JOBS_NUM_MAX; i++) {
-            if (jobs[i].JOB_ID > maxId) {
-                maxId = jobs[i].JOB_ID;
+            if (jobs_list[i]->JOB_ID > maxId) {
+                maxId = jobs_list[i]->JOB_ID;
                 job_idx_in_jobs = i;
             }
         }
     }
     else{
         for (int j = 0; j < JOBS_NUM_MAX ; ++j) {
-            if (jobs[j].JOB_ID == job_id ){
+            if (jobs_list[j]->JOB_ID == job_id ){
                 job_idx_in_jobs = j;
                 break;
             }
@@ -140,16 +142,15 @@ int fg(job *jobs, int job_id, int nargs) {
 
     //now we know job_idx_in_jobs
     //TODO: verify print format
-    printf("%s %d", jobs[job_idx_in_jobs].cmd, jobs[job_idx_in_jobs].PID);
-2
-    if (jobs[job_idx_in_jobs].state == JOB_STATE_STP){ // if stopped, send it SIGCONT
-        jobs[job_idx_in_jobs].state = JOB_STATE_FG;
-        my_system_call(SYS_KILL,jobs[job_idx_in_jobs].PID,SIGCONT);
-        printf("%s", jobs[job_idx_in_jobs].cmd);
+    printf("%s %d", jobs_list[job_idx_in_jobs]->cmd, jobs_list[job_idx_in_jobs]->PID);
+    if (jobs_list[job_idx_in_jobs]->state == JOB_STATE_STP){ // if stopped, send it SIGCONT
+        jobs_list[job_idx_in_jobs]->state = JOB_STATE_FG;
+        my_system_call(SYS_KILL,jobs_list[job_idx_in_jobs]->PID,SIGCONT);
+        printf("%s", jobs_list[job_idx_in_jobs]->cmd);
 
     }
     else{
-        jobs[job_idx_in_jobs].state = JOB_STATE_FG;
+        jobs_list[job_idx_in_jobs]->state = JOB_STATE_FG;
     }
 
     // TODO  actually run the JOB?
@@ -157,8 +158,7 @@ int fg(job *jobs, int job_id, int nargs) {
 
 }
 
-
-int bg(job *jobs, int job_id, int nargs){
+int bg(int job_id, int nargs){
 
     if (nargs > 1 ){
         perrorSmash("bg","invalid arguments");
@@ -166,16 +166,16 @@ int bg(job *jobs, int job_id, int nargs){
     }
     int job_idx_in_jobs = -1;
     if (job_id == NOARGSVAL ){
-        int maxId = jobs[0].JOB_ID;
+        int maxId = jobs_list[0]->JOB_ID;
         for (int i = 1; i < JOBS_NUM_MAX; i++) {
             // TODO: MAKE SURE REGARDING NO JOB_ID AND NO JOB IN STOPPED, BECAUSE WE SAID IT IS EQUAL TO MAX, ALSO MAKE SURE ARG FORMAT IS OKAY
 
-            if ( (jobs[i].JOB_ID!=NULL ) &&  (jobs[i].JOB_ID > maxId )   ) {
-                maxId = jobs[i].JOB_ID;
+            if ( ( ( jobs_list[i]->JOB_ID < 100 )&& (jobs_list[i]->JOB_ID > 100 )  ) &&  (jobs_list[i]->JOB_ID > maxId )   ) {
+                maxId = jobs_list[i]->JOB_ID;
                 job_idx_in_jobs = i;
             }
         }
-        if ( (job_idx_in_jobs !=ERROR) && (jobs[job_idx_in_jobs].state != JOB_STATE_STP )){
+        if ( (job_idx_in_jobs !=ERROR) && (jobs_list[job_idx_in_jobs]->state != JOB_STATE_STP )){
             char* msg;
             sprintf(msg, "job id %d is already in background", job_id);
             perrorSmash("bg",msg);
@@ -184,7 +184,7 @@ int bg(job *jobs, int job_id, int nargs){
     }
     else{
         for (int j = 0; j < JOBS_NUM_MAX ; ++j) {
-            if (jobs[j].JOB_ID == job_id ){
+            if (jobs_list[j]->JOB_ID == job_id ){
                 job_idx_in_jobs = j;
                 break;
             }
@@ -198,7 +198,7 @@ int bg(job *jobs, int job_id, int nargs){
         }
         else{ //in case we found the JOB_ID, verify it is stopped.
 
-            if (jobs[job_idx_in_jobs].state != JOB_STATE_STP){ //if not stopped, err
+            if (jobs_list[job_idx_in_jobs]->state != JOB_STATE_STP){ //if not stopped, err
                 char* msg;
                 sprintf(msg, "job id %d is already in background", job_id);
                 perrorSmash("bg",msg);
@@ -207,12 +207,12 @@ int bg(job *jobs, int job_id, int nargs){
         }
     }
     // if alles gut
-    printf("%s %d", jobs[job_idx_in_jobs].cmd, jobs[job_idx_in_jobs].PID);
-    my_system_call(SYS_KILL,jobs[job_idx_in_jobs].PID,SIGCONT); //sending SIGCONT to the stopped job
-    jobs[job_idx_in_jobs].state =  JOB_STATE_BG;
+    printf("%s %d", jobs_list[job_idx_in_jobs]->cmd, jobs_list[job_idx_in_jobs]->PID);
+    my_system_call(SYS_KILL,jobs_list[job_idx_in_jobs]->PID,SIGCONT); //sending SIGCONT to the stopped job
+    jobs_list[job_idx_in_jobs]->state =  JOB_STATE_BG;
 }
 
-int quit(job *jobs, int nargs ,char* arg){// kill the smash
+int quit(int nargs ,char* arg){// kill the smash
     if (nargs>1){
         perrorSmash("quit","expected 0 or 1 arguments");
         return ERROR;
@@ -220,8 +220,8 @@ int quit(job *jobs, int nargs ,char* arg){// kill the smash
     if (strcmp(arg,"kill") == 0){
         //kill jobs in order.
         for (int i = 0; i < JOBS_NUM_MAX; ++i) {
-            printf("%d %s - ",jobs[i].JOB_ID,jobs[i].cmd);
-            my_system_call(SYS_KILL, job_list[i].PID, SIGTERM); //send sigterm
+            printf("%d %s - ",jobs_list[i]->JOB_ID,jobs_list[i]->cmd);
+            my_system_call(SYS_KILL, jobs_list[i]->PID, SIGTERM); //send sigterm
             printf("sending SIGTERM... ");
 
 
@@ -232,8 +232,9 @@ int quit(job *jobs, int nargs ,char* arg){// kill the smash
             int terminated_gracefully = 0;
             for (int elapsed_time = 0; elapsed_time < GRACE_PERIOD; elapsed_time += CHECK_INTERVAL_SECONDS) {
                 int status;
-                int result = my_system_call(SYS_WAITPID, job_list[i].PID, &status,WNOHANG); //send sigterm
-                if (result == job_list[i].PID) {
+                // TODO FIXXXXX int result = my_system_call(SYS_WAITPID, jobs_list[i]->PID, &status,WNOHANG); //send sigterm
+                int result = 6;
+                if (result == jobs_list[i]->PID) {
                     // Process terminated and was successfully reaped
                    terminated_gracefully = 1;
                     break; // Exit the grace period loop
@@ -254,7 +255,7 @@ int quit(job *jobs, int nargs ,char* arg){// kill the smash
                  */
             }
             if (!terminated_gracefully){ //process still alive.. KILL!
-                my_system_call(SYS_KILL, job_list[i].PID, SIGKILL); //send sigkill
+                my_system_call(SYS_KILL, jobs_list[i]->PID, SIGKILL); //send sigkill
                 printf("sending SIGKILL... done");
             }
 
@@ -274,7 +275,7 @@ int quit(job *jobs, int nargs ,char* arg){// kill the smash
 
 int showpid(cmd cmd_obj) {
     if (cmd_obj.nargs != 0) {
-        perrorSmash(const char* "showpid", const char* "expected 0 arguments");
+        perrorSmash("showpid","expected 0 arguments");
         // fprintf(stderr, "smash error: showpid: expected 0 argument");
         return -1;
     }
@@ -287,7 +288,7 @@ int showpid(cmd cmd_obj) {
 
 int pwd(cmd cmd_obj) {
     if (cmd_obj.nargs != 0) {
-        perrorSmash(const char* "pwd", const char* "expected 0 arguments");
+        perrorSmash("pwd","expected 0 arguments");
         // fprintf(stderr, "smash error: pwd: expected 0 argument");
         return -1;
     }
@@ -295,7 +296,7 @@ int pwd(cmd cmd_obj) {
 
         char* pwd = (char*)malloc(CMD_LENGTH_MAX); 
         if (pwd == NULL) {
-            perrorSmash(const char* "pwd", const char* "malloc failed");
+            perrorSmash("pwd","malloc failed");
             exit(-1);
         }
         if (getcwd(pwd, CMD_LENGTH_MAX) != NULL) {
@@ -304,7 +305,7 @@ int pwd(cmd cmd_obj) {
             return 0;
         }
         else {
-            perrorSmash(const char* "pwd", const char* "getcwd failed");
+            perrorSmash("pwd","getcwd failed");
             free(pwd);
             return -1;
         }
@@ -312,54 +313,54 @@ int pwd(cmd cmd_obj) {
 }
 
 int kill(cmd cmd_obj) {
-	int signum = cmd_obj.args[1];
-	int job_id = cmd_obj.args[2];
-    if ((cmd_obj.nargs != 2) || (cmd_obj.args[1] < 1) || (cmd_obj.args[1] > 64) ) { // make sure signum is a valid signum (1<=args[1]<=64)
-        perrorSmash(const char* "kill", const char* "invalid arguments");
+	int signum = atoi(cmd_obj.args[1]);
+	int job_id = atoi(cmd_obj.args[2]);
+    if ( ( (cmd_obj.nargs ) != 2)  || ( ( atoi(cmd_obj.args[1]) )  < 1) || ( ( atoi(cmd_obj.args[1]) ) > 64) ) { // make sure signum is a valid signum (1<=args[1]<=64)
+        perrorSmash("kill","invalid arguments");
 
-        return -1;
+        return ERROR;
     }
     for (int i=0 ; i < 100 ; i++){
-        if (job_id == i && job_list[i] != NULL ){
-            my_system_call(5, job_list[i].PID, signum); //send signal
-            printf("signal %d was sent to pid %ld", signum, job_list[i].PID); // maybe we should define all global variables in commands.h ??
+        if (job_id == i && jobs_list[i] != NULL ){
+            my_system_call(5, jobs_list[i]->PID, signum); //send signal
+            printf("signal %d was sent to pid %d", signum, jobs_list[i]->PID); // maybe we should define all global variables in commands.h ??
             return 0;
         }
     }
     char error_msg[MAX_ERROR_LEN] = {0}; // longest message should be no longer than 25
     snprintf(error_msg, MAX_ERROR_LEN, "job id %d does not exist", job_id);
 
-    perrorSmash(const char* "kill", const char* error_msg);
+    perrorSmash("kill",error_msg);
     return -1;
 }
 
 int cd (cmd cmd_obj) {
     if (cmd_obj.nargs != 1) {
-        perrorSmash(const char* "cd", const char* "expected 1 arguments");
+        perrorSmash("cd","expected 1 arguments");
         return -1;
     }
     else {
 		getcwd(current_cd, CMD_LENGTH_MAX);
-		char* temp [CMD_LENGTH_MAX];
+		char temp[CMD_LENGTH_MAX];
 		char* path = cmd_obj.args[1];
 
-        if (cmd.args[1] == '-'){
+        if (strcmp(cmd_obj.args[1],"-") == 0){
             if (old_cd == NULL) {
-                perrorSmash(const char* "cd", const char* "old pwd not set");
+                perrorSmash("cd","old pwd not set");
                 return -1;
             }
             else {
 				chdir(old_cd);
-				printf("%s \n", old_path);
+				printf("%s \n", old_cd);
 				strcpy(temp, old_cd);
 				strcpy(old_cd, current_cd);
 				strcpy(current_cd, temp);
                 return 0;
             }
         }
-        else if (cmd.args[1] == '..') {
+        else if (strcmp(cmd_obj.args[1],"..") == 0 ) {
             if (current_cd != NULL) {
-                char* delimiters = "/";
+                char delimiters = '/';
                 //char path_to_print [CMD_LENGTH_MAX] = {0};
                 char* last_dir = strrchr(current_cd, delimiters);
                 if (strcmp(*last_dir, current_cd)){
@@ -380,13 +381,13 @@ int cd (cmd cmd_obj) {
             DIR* dir = opendir(path);
             if (dir == NULL){ // check if path valid
                 if (errno == ENOENT){ //if directory doesnt exist
-                    perrorSmash(const char* "cd", const char* "target directory does not exist");
+                    perrorSmash("cd","target directory does not exist");
                 }
 				else if (errno == ENOTDIR) { //if path is of a file
-					char* error_msg[MAX_ERROR_LEN + CMD_LENGTH_MAX];
+					char error_msg[MAX_ERROR_LEN + CMD_LENGTH_MAX];
 					snprintf(error_msg, MAX_ERROR_LEN + CMD_LENGTH_MAX, "%s: not a directory", path);
 
-					perrorSmash(const char* "cd", const char* error_msg);
+					perrorSmash("cd",error_msg);
 
 				}
 
@@ -407,24 +408,23 @@ int cd (cmd cmd_obj) {
 
 int jobs(cmd cmd_obj){
     if (cmd_obj.nargs != 0){
-        perrorSmash(const char* "jobs", const char* "expected 0 arguments");
+        perrorSmash("jobs","expected 0 arguments");
         return ERROR;
 		}
     else {
         for (int i = 0 ; i<100 ; i++){
             if (jobs_list[i] != NULL){
-                if (jobs_list[i].state == JOB_STATE_STP){
-                    printf("[%d] %s: %ld %d secs (stopped)\n", i, jobs_list[i].cmd, jobs_list[i].PID, jobs_list[i].time)
+                if (jobs_list[i]->state == JOB_STATE_STP){
+                    printf("[%d] %s: %d %d secs (stopped)\n", i, jobs_list[i]->cmd, jobs_list[i]->PID, jobs_list[i]->time);
                 }
                 else{
-                    printf("[%d] %s: %ld %d secs\n", i, jobs_list[i].cmd, jobs_list[i].PID, jobs_list[i].time)
+                    printf("[%d] %s: %d %d secs\n", i, jobs_list[i]->cmd, jobs_list[i]->PID, jobs_list[i]->time);
                 }
             }
         }
         return 0;
     }
 }
-
 
 int alias( char* new_cmd_name, char* new_cmd){
 
@@ -436,41 +436,48 @@ int command_selector(cmd cmd_after_parse){
 
 
     if ( strcmp(cmd_after_parse.cmd,cmd_DB[0] ) == 0 ){
-        // showpid(cmd_after_parse);
+         return showpid(cmd_after_parse);
     }
     else if ( strcmp(cmd_after_parse.cmd,cmd_DB[1] ) == 0  ) {
-        // pwd(cmd_after_parse);
+        return pwd(cmd_after_parse);
     }
     else if ( strcmp(cmd_after_parse.cmd,cmd_DB[2] ) == 0  ) {
-        // cd(cmd_after_parse);
+         return cd(cmd_after_parse);
     }
     else if ( strcmp(cmd_after_parse.cmd,cmd_DB[3] ) == 0  ) {
-        // jobs(cmd_after_parse);
+         return jobs(cmd_after_parse);
     }
     else if ( strcmp(cmd_after_parse.cmd,cmd_DB[4] ) == 0  ) {
-        // kill(cmd_after_parse);
+         return kill(cmd_after_parse);
     }
     else if ( strcmp(cmd_after_parse.cmd,cmd_DB[5]  ) == 0  ) {
         //TODO: add check at parser for #args, and pass -1 if no args
         //  fg();
+        return 1;
     }
     else if ( strcmp(cmd_after_parse.cmd,cmd_DB[6] ) == 0  ) {
         //  bg();
+        return 1;
     }
     else if ( strcmp(cmd_after_parse.cmd,cmd_DB[7] ) == 0 ) {
         // if( quit(...) == QUITVAL) return QUITVAL ; //SIG TO END the program
         // return ERROR;
+        return 1;
     }
     else if ( strcmp(cmd_after_parse.cmd,cmd_DB[8]  ) == 0 ) {
         //   diff();
+        return 1;
     }
     else if ( strcmp(cmd_after_parse.cmd,cmd_DB[9] ) == 0  ) {
         //   alias();
+        return 1;
     }
     else if ( strcmp(cmd_after_parse.cmd,cmd_DB[10] ) == 0  ) {
         //   unalias();
+        return 1;
     }
 
+    return 1;
 
 }
 
@@ -562,14 +569,7 @@ cmd* parseCmdExample(char* line)
     */
     return cmd_list;
 }
-/*
-fg
-bg
-quit
 
-Alias
-Unalias
- */
 
 
 

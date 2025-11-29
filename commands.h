@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
+#include <unistd.h>
 
 #define CMD_LENGTH_MAX 120
 #define ARGS_NUM_MAX 20
@@ -27,7 +28,7 @@
 #define QUITVAL -2
 #define ERROR -1
 
-
+#define SIGCONT 18
 /*=============================================================================
 * error handling - some useful macros and examples of error handling,
 * feel free to not use any of this
@@ -94,19 +95,20 @@ cmd* parseCommandExample(char* line);
 int command_selector(cmd cmd_after_parse);
 void perrorSmash(const char* cmd, const char* msg);
 int diff(char* args[ARGS_NUM_MAX],int nargs);
-int fg(job *jobs, int job_id, int nargs);
-int bg(job *jobs, int job_id);
-int quit(job *jobs, int nargs ,char* arg);
+int fg(int job_id, int nargs);
+int bg(int job_id, int nargs);
+int quit(int nargs ,char* arg);
 int showpid(cmd cmd_obj);
 int pwd(cmd cmd_obj);
-int kill(cmd cmd_obj, int signum, int job_id);
-int cd (cmd cmd_obj, char* path);
+int kill(cmd cmd_obj);
+int cd (cmd cmd_obj);
 int jobs(cmd cmd_obj);
 
 int job_to_fg_pid;
 cmd last_fg_cmd; //TODO update in smash
 
-
+job* jobs_list[100];
+int current_job_index;
 
 
 #endif //COMMANDS_H
