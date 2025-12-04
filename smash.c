@@ -89,7 +89,7 @@ int main(int argc, char* argv[])
                         bg_internal_job.cmd = cmd_after_parse.cmd;
                         bg_internal_job.state = JOB_STATE_BG ;
                         jobs_list[bg_internal_job.JOB_ID]= bg_internal_job ;
-                        time(bg_internal_job.time) ;
+                        time(&(bg_internal_job.time)) ;
 
 
                     }
@@ -121,7 +121,7 @@ int main(int argc, char* argv[])
                         bg_external_job.state = JOB_STATE_BG ;
 
                         jobs_list[bg_external_job.JOB_ID]= bg_external_job ;
-                        time(bg_internal_job.time) ;
+                        time(&(bg_internal_job.time)) ;
 
                     }
                 }
@@ -174,3 +174,4 @@ int main(int argc, char* argv[])
 //
 
 //
+
