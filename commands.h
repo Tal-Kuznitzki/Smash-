@@ -73,6 +73,12 @@ typedef struct job {
     time_t time;
 } job ;
 
+typedef struct list {
+    cmd og_cmd_list[ARGS_NUM_MAX];
+    char alias[80];
+    struct list* next;
+    struct list* prev;
+} list;
 
 /*=============================================================================
 * error definitions
@@ -112,5 +118,6 @@ job* jobs_list[100];
 int current_job_index;
 cmd cmd_list[ARGS_NUM_MAX];
 job job_to_be_stopped;
+list* head_alias_list;
 
 #endif //COMMANDS_H
