@@ -496,6 +496,7 @@ cmd* parseCmdExample(char* line)
 {
 
 	cmd cmd_obj;
+	cmd_obj.bg = 0;
 	cmd_obj.internal = 0;
     char* delimiters = " \t\n"; //parsing should be done by spaces, tabs or newlines
     strcpy(cmd_obj.cmd,strtok(line, delimiters));//read strtok documentation - parses string by delimiters
@@ -511,6 +512,128 @@ cmd* parseCmdExample(char* line)
             break;
         cmd_obj.nargs++;
     }
+
+	///////////////////// handle alias //////////////////////////////////
+	if (strcmp(cmd_obj.cmd, "alias") == 0) {
+		list* new_node = (list*)malloc(sizeof(list));
+
+		if (new_node == NULL) {
+		    // if malloc fails
+		    return -1;
+		}
+		
+		// 1. אתחול הנתונים
+		// יש לבצע העתקה או אתחול של המערכים (cmd ו-alias) כאן.
+		// לדוגמה, איפוס המערכים:
+		memset(new_node->og_cmd_list, 0, sizeof(new_node->og_cmd_list));
+		memset(new_node->alias, 0, sizeof(new_node->alias));
+		strcpy(new_node->alias, cmd_obj.args[1]);
+		
+	int num_cmd=0;
+    int start_of_cmd=0;
+    int end_of_cmd=-1;
+    new_node->og_cmd_list[num_cmd]=cmd_obj; // 1 cmd only
+    for (int i = 3; i < ARGS_NUM_MAX; ++i) {
+        if( strcmp(cmd_obj.args[i],"&&")  == 0 ){
+           cmd cmd_obj_tmp;
+            cmd_obj_tmp.bg=0;
+           end_of_cmd=i;
+            cmd_obj_tmp.nargs=end_of_cmd-start_of_cmd-1;
+            strcpy(cmd_obj_tmp.cmd,cmd_obj.args[start_of_cmd]);
+            for (int k = i-1; k >= start_of_cmd ; k--) {
+                strcpy(cmd_obj_tmp.args[k-start_of_cmd],cmd_obj.args[k]);
+            }
+
+            //start_of end of
+            for (int i=0 ; i<11 ; i++) {
+                if (!strcmp(cmd_DB[i], cmd_obj_tmp.cmd)){
+                    cmd_obj_tmp.internal = 1;
+                }
+            }
+            start_of_cmd=end_of_cmd+1;
+            new_node->og_cmd_list[num_cmd]=cmd_obj_tmp;
+            num_cmd++;
+        }
+    }
+		
+	//if only one cmd
+	if (num_cmd == 0) {
+    for (int i=0 ; i<11 ; i++) {
+        if (!strcmp(cmd_DB[i], cmd_obj.cmd)){
+            new_node->og_cmd_list[num_cmd].internal = 1;
+        }
+    }
+
+	for (int i = 19 ; i>0 ; i--) {
+		if ( strcmp(cmd_obj.args[i],"&") == 0 ){
+			new_node->og_cmd_list[num_cmd].bg = 1;
+			new_node->og_cmd_list[num_cmd].nargs--;
+		}
+	}
+	}
+		// update ptrs
+		new_node->next = *head_alias_list;
+    	new_node->prev = NULL; // first node will point to NULL
+    
+	    // update prev node only if it is not the first node
+	    if (*head_alias_list != NULL) {
+	        (*head_alias_list)->prev = new_node;
+	    }
+	    
+	    // update head of the list - to be the new node
+	    *head_alias_list = new_node;
+			
+			//return new_node;
+	}
+
+
+	////////////////////////////////////////////////////////////
+	// handle "unalias" or aliased cmd
+	else {
+		if (strcmp(cmd_obj.cmd, "unalias")) {
+			list* current = head_alias_list;
+
+			while (current != NULL) {
+			    if ( strcmp(current->alias, cmd_obj.args[1]) ) {
+					if (current->prev == NULL) {
+				        // if current is head - update head
+				        *head_alias_list = current->next;
+				    } else {
+				        // update the "next" ptr of the prev node
+				        current->prev->next = current->next;
+				    }
+				
+				    if (current->next != NULL) {
+				        // in both cases update the next node's prev if it exist
+				        current->next->prev = current->prev;
+				    }
+				
+				    // release mamory
+				    free(current);
+				}
+			    
+			    current = current->next;
+			}
+			perrorSmash("unalias", "command not found");
+				
+		}
+		else {
+		list* current = head_alias_list;
+
+		while (current != NULL) {
+		    if ( strcmp(current->alias, cmd_obj.cmd) ) {
+				int j = 0;
+				while (current->og_cmd_list[j] != NULL) {
+					cmd_list[j] = current->og_cmd_list[j];
+				}
+				return cmd_list; 
+			}
+		    
+		    current = current->next;
+		}
+		}
+		
+	//// we get here if we didnt find alias
 
 /// cdhello
     int num_cmd=0;
@@ -553,6 +676,7 @@ cmd* parseCmdExample(char* line)
 			cmd_obj.nargs--;
 		}
 	}
+	}
 	
     /*
     At this point cmd contains the command string and the args array contains
@@ -570,6 +694,7 @@ cmd* parseCmdExample(char* line)
     */
     return cmd_list;
 }
+
 
 
 
