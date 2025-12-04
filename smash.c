@@ -157,6 +157,9 @@ int main(int argc, char* argv[])
 
                 }
             }
+            // if we got here it means we are done processing the privious command
+            // TODO: check with tal about jobs in the bg!!
+            cmd_list_after_parse[cmd_list_indx] = NULL; //delete it from the list because it's a global list!
             cmd_list_indx++;
         }
         if (end_val == QUITVAL) break;
@@ -174,4 +177,5 @@ int main(int argc, char* argv[])
 //
 
 //
+
 
