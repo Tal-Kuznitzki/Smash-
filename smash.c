@@ -28,7 +28,7 @@
 * global variables & data structures
 =============================================================================*/
 char _line[CMD_LENGTH_MAX];
-
+list* head_alias_list = NULL;
 
 
 /*=============================================================================
@@ -172,4 +172,5 @@ int main(int argc, char* argv[])
 //TODO:
 // UPDATE PARSER TO LOOK AT ALIAS LIST
 //
+
 //
