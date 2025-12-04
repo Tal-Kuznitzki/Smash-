@@ -3,17 +3,19 @@
 
 #include "commands.h"
 #include <signal.h>
+#include <string.h>
 /*=============================================================================
 * includes, defines, usings
 =============================================================================*/
 #define KILL 5
 #define CTRLZ 20
 #define CTRLC 2
+#define SIGKILL 9
 /*=============================================================================
 * global functions
 =============================================================================*/
 
-
+/*
 struct sigaction
 {
     void (*sa_handler)(int);
@@ -22,7 +24,7 @@ struct sigaction
     int sa_flags;
     void (*sa_restorer)(void);
 };
-
+*/
 int pid_to_sig;
 int job_id_to_sig;
 job job_to_be_stopped;

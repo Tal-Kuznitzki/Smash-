@@ -6,10 +6,10 @@
 #include <string.h>
 #include <stdio.h>    
 #include <unistd.h>
-
+#include <stdbool.h>
 
 #define MAX_ERROR_LEN 30
-#define CMD_LENGTH_MAX 120
+#define CMD_LENGTH_MAX 80
 #define ARGS_NUM_MAX 20
 #define JOBS_NUM_MAX 100
 
@@ -45,18 +45,22 @@ char current_cd[CMD_LENGTH_MAX] = {0};
 cmd cmd_list[ARGS_NUM_MAX]= {0};
 job* jobs_list[100];
 
+int smash_pid;
+int curr_fg_pid;
+
+
 
 int current_job_index=0; // TODO update accordingly
 
 
 
-int diff(char* args[ARGS_NUM_MAX],int nargs){
-    if (nargs!=2){
+int diff(cmd cmd_obj){
+    if (cmd_obj.nargs!=2){
         perrorSmash("diff","expected 2 arguments");
-        return -1 ; // TODO :VERIFY WHAT RETVAL SHOULD BE ON ERROR
+        return ERROR ;
     }
-    char* path1 = args[0];
-    char* path2 = args[1];
+    char* path1 = cmd_obj.args[1];
+    char* path2 = cmd_obj.args[2];
 
     //opening both files;
     int fd1 = my_system_call(SYS_OPEN,path1,O_RDONLY);
@@ -64,7 +68,7 @@ int diff(char* args[ARGS_NUM_MAX],int nargs){
 
     if ( ( (fd1 == ERROR) &&  (errno==ENOENT) ) || ( (fd2 == ERROR) &&  (errno==ENOENT) ) ){
         perrorSmash("diff","expected valid paths for files");
-        return -1 ; // TODO :VERIFY WHAT RETVAL SHOULD BE ON ERROR
+        return ERROR ;
     }
     const size_t CHUNK_SIZE = 4096;
     char buffer1[CHUNK_SIZE];
@@ -77,7 +81,7 @@ int diff(char* args[ARGS_NUM_MAX],int nargs){
 
         if ( ( (bytes_read1 == ERROR) &&  (errno==EISDIR) ) || ( (bytes_read2 == ERROR) &&  (errno==EISDIR) ) ){
             perrorSmash("diff","paths are not files");
-            return -1 ;// TODO :VERIFY WHAT RETVAL SHOULD BE ON ERROR
+            return ERROR;
         }
         if (bytes_read1 != bytes_read2) { //different sizes, so different ofc
             my_system_call(SYS_CLOSE, fd1);
@@ -103,27 +107,36 @@ int diff(char* args[ARGS_NUM_MAX],int nargs){
     }
 }
 
-int fg(int job_id, int nargs) {
-    if (nargs > 1 ){
+int fg(cmd cmd_obj) {
+    int job_id;
+    if (cmd_obj.nargs > 1 ){
         perrorSmash("fg","invalid arguments");
-        return -1; //TODO error val
+        return ERROR;
+    }
+    else if (cmd_obj.nargs == 0){
+        job_id = NOARGSVAL;
+    }
+    else if (cmd_obj.nargs == 1){
+        job_id = atoi(cmd_obj.args[1]);
     }
     int job_idx_in_jobs = -1;
-    if (job_id == NOARGSVAL ){
-        int maxId = jobs_list[0]->JOB_ID;
-        if ( jobs_list[0] == NULL){// TODO is this the best way to verify empty joblist????
-            perrorSmash("fg"," jobs list is empty");
-            return ERROR; //TODO error val
+    if (job_id == NOARGSVAL ) { //if no job_id, two options, either take the maximal job_id,
+        int job_id = jobs_list[0]->JOB_ID;
+        if (jobs_list[0] == NULL) {
+            // TODO is this the best way to verify empty joblist????
+            perrorSmash("fg", " jobs list is empty");
+            return ERROR;
         }
+        //find maximal job_id
         for (int i = 1; i < JOBS_NUM_MAX; i++) {
-            if (jobs_list[i]->JOB_ID > maxId) {
-                maxId = jobs_list[i]->JOB_ID;
+            if (jobs_list[i]->JOB_ID > job_id) {
+                job_id = jobs_list[i]->JOB_ID;
                 job_idx_in_jobs = i;
             }
         }
     }
     else{
-        for (int j = 0; j < JOBS_NUM_MAX ; ++j) {
+        for (int j = 0; j < JOBS_NUM_MAX; ++j) {
             if (jobs_list[j]->JOB_ID == job_id ){
                 job_idx_in_jobs = j;
                 break;
@@ -134,11 +147,9 @@ int fg(int job_id, int nargs) {
             char* msg;
             sprintf(msg, "job id %d does not exist", job_id);
             perrorSmash("fg",msg);
-            return ERROR; //TODO error val
+            return ERROR;
         }
-
     }
-
     //now we know job_idx_in_jobs
     //TODO: verify print format
     printf("%s %d", jobs_list[job_idx_in_jobs]->cmd, jobs_list[job_idx_in_jobs]->PID);
@@ -146,18 +157,18 @@ int fg(int job_id, int nargs) {
         jobs_list[job_idx_in_jobs]->state = JOB_STATE_FG;
         my_system_call(SYS_KILL,jobs_list[job_idx_in_jobs]->PID,SIGCONT);
         printf("%s", jobs_list[job_idx_in_jobs]->cmd);
-
     }
     else{
         jobs_list[job_idx_in_jobs]->state = JOB_STATE_FG;
     }
-    my_system_call(SYS_WAITPID,jobs_list[job_id]->PID);
+    curr_fg_pid = jobs_list[job_id]->PID;
+    my_system_call(SYS_WAITPID,curr_fg_pid);
     return 0;
 }
 
-int bg(int job_id, int nargs){
-
-    if (nargs > 1 ){
+int bg(cmd cmd_obj){
+    int job_id = atoi(cmd_obj.args[1]);
+    if (cmd_obj.nargs > 1 ){
         perrorSmash("bg","invalid arguments");
         return ERROR;
     }
@@ -210,54 +221,40 @@ int bg(int job_id, int nargs){
     return 0;
 }
 
-int quit(int nargs ,char* arg){// kill the smash
-    if (nargs>1){
+int quit(cmd cmd_obj){// kill the smash
+    if (cmd_obj.nargs>1){
         perrorSmash("quit","expected 0 or 1 arguments");
         return ERROR;
     }
-    if (strcmp(arg,"kill") == 0){
-        //kill jobs in order.
+    if ( strcmp(cmd_obj.args[1],"kill") == 0){   //kill jobs in order.
         for (int i = 0; i < JOBS_NUM_MAX; ++i) {
-            printf("%d %s - ",jobs_list[i]->JOB_ID,jobs_list[i]->cmd);
-            my_system_call(SYS_KILL, jobs_list[i]->PID, SIGTERM); //send sigterm
+            if (jobs_list[i] == NULL) continue;
+            printf("[%d] %s - ",jobs_list[i]->JOB_ID,jobs_list[i]->cmd);
+            my_system_call(SYS_KILL, jobs_list[i]->PID, SIGTERM);
             printf("sending SIGTERM... ");
+            fflush(stdout);
+            bool job_is_dead = false;
+            for (int second = 0; second < 5 ; ++second) {
 
-
-
-
-            // now check status every sec
-
-            int terminated_gracefully = 0;
-            for (int elapsed_time = 0; elapsed_time < GRACE_PERIOD; elapsed_time += CHECK_INTERVAL_SECONDS) {
-                int status;
-                // TODO FIXXXXX int result = my_system_call(SYS_WAITPID, jobs_list[i]->PID, &status,WNOHANG); //send sigterm
-                int result = 6;
-                if (result == jobs_list[i]->PID) {
-                    // Process terminated and was successfully reaped
-                   terminated_gracefully = 1;
-                    break; // Exit the grace period loop
-                } else if (result == 0) {
-                    // Process is still running, wait for the interval
-                    sleep(CHECK_INTERVAL_SECONDS);
-                }
-                /* not needed
-                 * else if (result == -1 && errno == ECHILD) {
-                    // Process likely terminated/reaped before SIGTERM or immediately after
-                    terminated_gracefully = 1;
-                    break; // Exit the grace period loop
-                } else if (result == -1) {
-                    perror("waitpid error");
-                    terminated_gracefully = 1; // Treat as failure and stop check
+                int still_alive = my_system_call(SYS_KILL,jobs_list[i]->PID,0);
+                if (still_alive == ERROR){
+                    //eliminated the process successfully :)
+                    job_is_dead=true;
                     break;
                 }
-                 */
+                sleep(1);
             }
-            if (!terminated_gracefully){ //process still alive.. KILL!
-                my_system_call(SYS_KILL, jobs_list[i]->PID, SIGKILL); //send sigkill
+            if (job_is_dead){
+                printf("done");
+                fflush(stdout);
+            }
+            else{ // 5 sec passed but job is still alive, send SIGKILL
+                my_system_call(SYS_KILL, jobs_list[i]->PID, SIGKILL);
                 printf("sending SIGKILL... done");
+                fflush(stdout);
             }
-
-
+            int status;
+            my_system_call(SYS_WAITPID, jobs_list[i]->PID, &status, 0); //small wait for Process table to update - needed?
             printf("\n");
         }
     }
@@ -265,21 +262,16 @@ int quit(int nargs ,char* arg){// kill the smash
         perrorSmash("quit","unexpected arguments");
         return ERROR;
     }
-    // return error to signal QUITTING
     return QUITVAL;
-
-
 }
 
 int showpid(cmd cmd_obj) {
     if (cmd_obj.nargs != 0) {
         perrorSmash("showpid","expected 0 arguments");
-        // fprintf(stderr, "smash error: showpid: expected 0 argument");
-        return -1;
+        return ERROR;
     }
     else {
-        pid_t smash_pid = getpid();
-        printf ("smash pid is %ld\n", (long) smash_pid);
+        printf ("smash pid is %d\n", smash_pid);
         return smash_pid;
     }
 }
@@ -343,7 +335,7 @@ int cd (cmd cmd_obj) {
 		char* path = cmd_obj.args[1];
 
         if (strcmp(cmd_obj.args[1],"-") == 0){
-            if (old_cd == NULL) {
+            if (old_cd == NULL) { //TODO we never get here?
                 perrorSmash("cd","old pwd not set");
                 return ERROR;
             }
@@ -389,7 +381,6 @@ int cd (cmd cmd_obj) {
                     return  ERROR;
 
 				}
-
             }
             else {
 				chdir(path);
@@ -402,6 +393,7 @@ int cd (cmd cmd_obj) {
         }
 
     }
+    return 0;
 }
 
 int jobs(cmd cmd_obj){
@@ -410,7 +402,7 @@ int jobs(cmd cmd_obj){
         return ERROR;
 		}
     else {
-        for (int i = 0 ; i<100 ; i++){
+        for (int i = 0 ; i<JOBS_NUM_MAX ; i++){
 			time_t curr_time = time(NULL);
             if (jobs_list[i] != NULL){
 				float diff = difftime(curr_time, jobs_list[i]->time);
@@ -431,7 +423,6 @@ int alias( char* new_cmd_name, char* new_cmd){
     return 0;
 
 }
-
 
 int command_selector(cmd cmd_after_parse){
 
@@ -461,8 +452,7 @@ int command_selector(cmd cmd_after_parse){
         return 1;
     }
     else if ( strcmp(cmd_after_parse.cmd,cmd_DB[7] ) == 0 ) {
-        // if( quit(...) == QUITVAL) return QUITVAL ; //SIG TO END the program
-        // return ERROR;
+         if( quit(cmd_after_parse) == QUITVAL) return QUITVAL ; //SIGNAL TO END the program
         return 1;
     }
     else if ( strcmp(cmd_after_parse.cmd,cmd_DB[8]  ) == 0 ) {
@@ -604,11 +594,11 @@ cmd* parseCmdExample(char* line)
 				    }
 				
 				    if (current->next != NULL) {
-				        // in both cases update the next node's prev if it exist
+				        // in both cases update the next node's prev if it exists
 				        current->next->prev = current->prev;
 				    }
 				
-				    // release mamory
+				    // release memory
 				    free(current);
 				}
 			    

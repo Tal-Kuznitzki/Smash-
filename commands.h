@@ -7,8 +7,10 @@
 #include <stdio.h>
 #include <time.h>
 #include <unistd.h>
+#include <dirent.h>
+#include <stddef.h>
 
-#define CMD_LENGTH_MAX 120
+#define CMD_LENGTH_MAX 80
 #define ARGS_NUM_MAX 20
 #define JOBS_NUM_MAX 100
 
@@ -58,7 +60,7 @@ static inline void* _validatedMalloc(size_t size)
 
 
 typedef struct cmd {
-    char cmd[80];
+    char cmd[CMD_LENGTH_MAX];
     int nargs;
     char* args[ARGS_NUM_MAX];
     int bg; //1 - bg 0 - fg
@@ -101,10 +103,10 @@ typedef enum {
 cmd* parseCommandExample(char* line);
 int command_selector(cmd cmd_after_parse);
 void perrorSmash(const char* cmd, const char* msg);
-int diff(char* args[ARGS_NUM_MAX],int nargs);
-int fg(int job_id, int nargs);
-int bg(int job_id, int nargs);
-int quit(int nargs ,char* arg);
+int diff(cmd cmd_obj);
+int fg(cmd cmd_obj);
+int bg(cmd cmd_obj);
+int quit(cmd cmd_obj);
 int showpid(cmd cmd_obj);
 int pwd(cmd cmd_obj);
 int kill(cmd cmd_obj);
@@ -112,12 +114,13 @@ int cd (cmd cmd_obj);
 int jobs(cmd cmd_obj);
 
 int job_to_fg_pid;
-cmd last_fg_cmd; //TODO update in smash
+cmd last_fg_cmd;
 
-job* jobs_list[100];
+job* jobs_list[JOBS_NUM_MAX];
 int current_job_index;
 cmd cmd_list[ARGS_NUM_MAX];
 job job_to_be_stopped;
 list* head_alias_list;
-
+int smash_pid;
+int curr_fg_pid;
 #endif //COMMANDS_H

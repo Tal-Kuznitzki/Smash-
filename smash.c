@@ -4,8 +4,6 @@
 =============================================================================*/
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-
 #include "my_system_call.h"
 #include "commands.h"
 #include "signals.h"
@@ -36,14 +34,24 @@ list* head_alias_list = NULL;
 =============================================================================*/
 int main(int argc, char* argv[])
 {
-
     char _cmd[CMD_LENGTH_MAX];
-    struct sigaction sa = { .sa_handler = &sigintHandler };
-     //sigaction(CTRLZ || CTRLC   , &sa, NULL);  //TODO WHERE THIS GOES?!
+    struct sigaction sa;
+    sa.sa_handler = &sigintHandler ;
+    sigaction(CTRLZ, &sa, NULL);  //TODO WHERE THIS GOES?!
+    sigaction(CTRLC, &sa, NULL);  //TODO WHERE THIS GOES?!
+
     job_to_fg_pid = -1;
-    last_fg_cmd = NULL;
-    int end_val=0;
+    //some basic setting, NULL-like
+    /*
+    last_fg_cmd.bg = -1 ;
+    last_fg_cmd.nargs = -1;
+    last_fg_cmd.internal = -1;
+    last_fg_cmd.args = {0};
+    last_fg_cmd.cmd = "";
+    */
+     int end_val=0;
     int external_fg_end_val=0;
+    smash_pid =  getpid();
     while(1) {
         printf("smash > ");
         fgets(_line, CMD_LENGTH_MAX, stdin);
@@ -85,8 +93,9 @@ int main(int argc, char* argv[])
                     else { //father process
                         bg_internal_job.JOB_ID = current_job_index ;
                         current_job_index++;
+                        smash_pid = pid_internal_bg;
                         bg_internal_job.PID = pid_internal_bg;
-                        bg_internal_job.cmd = cmd_after_parse.cmd;
+                        strcpy(bg_internal_job.cmd,cmd_after_parse.cmd);
                         bg_internal_job.state = JOB_STATE_BG ;
                         jobs_list[bg_internal_job.JOB_ID]= bg_internal_job ;
                         time(&(bg_internal_job.time)) ;
@@ -117,7 +126,7 @@ int main(int argc, char* argv[])
                         bg_external_job.JOB_ID = current_job_index ;
                         current_job_index++;
                         bg_external_job.PID = pid_bg;
-                        bg_external_job.cmd = cmd_after_parse;
+                        strcpy(bg_external_job.cmd,cmd_after_parse.cmd);
                         bg_external_job.state = JOB_STATE_BG ;
 
                         jobs_list[bg_external_job.JOB_ID]= bg_external_job ;
