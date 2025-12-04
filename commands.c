@@ -411,7 +411,7 @@ int jobs(cmd cmd_obj){
 		}
     else {
         for (int i = 0 ; i<100 ; i++){
-			time_t curr_time = time.time();
+			time_t curr_time = time(NULL);
             if (jobs_list[i] != NULL){
 				float diff = difftime(curr_time, jobs_list[i]->time);
                 if (jobs_list[i]->state == JOB_STATE_STP){
@@ -570,6 +570,7 @@ cmd* parseCmdExample(char* line)
     */
     return cmd_list;
 }
+
 
 
 
