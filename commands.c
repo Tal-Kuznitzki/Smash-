@@ -144,7 +144,7 @@ int fg(cmd cmd_obj) {
         }
         // if after the loop we didn't find the job_ID, print err
         if (job_idx_in_jobs == -1){
-            char* msg;
+            char msg[CMD_LENGTH_MAX];
             sprintf(msg, "job id %d does not exist", job_id);
             perrorSmash("fg",msg);
             return ERROR;
@@ -184,7 +184,7 @@ int bg(cmd cmd_obj){
             }
         }
         if ( (job_idx_in_jobs !=ERROR) && (jobs_list[job_idx_in_jobs]->state != JOB_STATE_STP )){
-            char* msg;
+            char msg[CMD_LENGTH_MAX];
             sprintf(msg, "job id %d is already in background", job_id);
             perrorSmash("bg",msg);
             return ERROR;
@@ -199,7 +199,7 @@ int bg(cmd cmd_obj){
         }
 
         if (job_idx_in_jobs == ERROR){  // if after the loop we didn't find the job_ID, print err
-            char* msg;
+            char msg[CMD_LENGTH_MAX];
             sprintf(msg, "job id %d does not exist", job_id);
             perrorSmash("bg",msg);
             return ERROR;
@@ -207,7 +207,7 @@ int bg(cmd cmd_obj){
         else{ //in case we found the JOB_ID, verify it is stopped.
 
             if (jobs_list[job_idx_in_jobs]->state != JOB_STATE_STP){ //if not stopped, err
-                char* msg;
+                char msg[CMD_LENGTH_MAX];
                 sprintf(msg, "job id %d is already in background", job_id);
                 perrorSmash("bg",msg);
                 return ERROR;
@@ -502,7 +502,7 @@ cmd* parseCmdExample(char* line)
             break;
         cmd_obj.nargs++;
     }
-
+    /* TODO : REMOVE COMMENT */
 	///////////////////// handle alias //////////////////////////////////
 	if (strcmp(cmd_obj.cmd, "alias") == 0) {
 		list* new_node = (list*)malloc(sizeof(list));
@@ -667,7 +667,7 @@ cmd* parseCmdExample(char* line)
 		}
 	}
 	}
-	
+	 /* TODO : REMOVE COMMENT */
     /*
     At this point cmd contains the command string and the args array contains
     the arguments. You can return them via struct/class, for example in C:
