@@ -474,16 +474,16 @@ int alias(cmd cmd_obj){
             }
         }
         // update ptrs
-        new_node->next = *head_alias_list;
+        new_node->next = head_alias_list;
         new_node->prev = NULL; // first node will point to NULL
 
         // update prev node only if it is not the first node
-        if (*head_alias_list != NULL) {
-            (*head_alias_list)->prev = new_node;
+        if (head_alias_list != NULL) {
+            (head_alias_list)->prev = new_node;
         }
 
         // update head of the list - to be the new node
-        *head_alias_list = new_node;
+        head_alias_list = new_node;
 
         //return new_node;
 
@@ -499,7 +499,7 @@ int unalias(cmd cmd_obj) {
                 if ( strcmp(current->alias, cmd_obj.args[1]) ) {
                     if (current->prev == NULL) {
                         // if current is head - update head
-                        *head_alias_list = current->next;
+                        head_alias_list = current->next;
                     } else {
                         // update the "next" ptr of the prev node
                         current->prev->next = current->next;
@@ -538,7 +538,7 @@ int command_selector(cmd cmd_after_parse){
          return jobs(cmd_after_parse);
     }
     else if ( strcmp(cmd_after_parse.cmd,cmd_DB[4] ) == 0  ) {
-         return kill(cmd_after_parse);
+         return my_kill(cmd_after_parse);
     }
     else if ( strcmp(cmd_after_parse.cmd,cmd_DB[5]  ) == 0  ) {
         //TODO: add check at parser for #args, and pass -1 if no args
@@ -582,7 +582,7 @@ void perrorSmash(const char* cmd, const char* msg)
 //example function for parsing commands
 
 
-cmd* parseCmdExample(char* line)
+cmd* parseCommandExample(char* line)
 {
     cmd cmd_obj;
     cmd_obj.bg = 0;
@@ -590,7 +590,7 @@ cmd* parseCmdExample(char* line)
     cmd_obj.nargs = 0;
     char* delimiters = " \t\n="; //parsing should be done by spaces, tabs or newlines
     strcpy(cmd_obj.cmd,strtok(line, delimiters));//read strtok documentation - parses string by delimiters
-    if(strcmp(cmd_obj.cmd,0) == 0) return INVALID_COMMAND; //this means no tokens were found, most like since command is invalid
+    if(strcmp(cmd_obj.cmd, "") == 0) return INVALID_COMMAND; //this means no tokens were found, most like since command is invalid
     cmd_obj.args[0] = cmd_obj.cmd; //first token before spaces/tabs/newlines should be command name
     for(int i = 1; i < ARGS_NUM_MAX; i++)
     {
@@ -628,9 +628,9 @@ cmd* parseCmdExample(char* line)
 				if (cmd_obj_tmp.internal == 0) {
 					list* current = head_alias_list;
 		            while (current != NULL) {
-		                if ( strcmp(current->alias, cmd_obj_temp.cmd) ) {
+		                if ( strcmp(current->alias, cmd_obj_tmp.cmd) ) {
 							int j = 0;
-		                    while (current->og_cmd_list[j] != NULL) {
+		                    while (current->og_cmd_list[j].bg != ERROR) {
 		                        cmd_list[num_cmd] = current->og_cmd_list[j];
 		                        j++;
 								num_cmd++;
