@@ -2,11 +2,14 @@
 /*=============================================================================
 * includes, defines, usings
 =============================================================================*/
+
+#define _POSIX_C_SOURCE 200809L
 #include <stdlib.h>
 #include <string.h>
 #include "my_system_call.h"
 #include "commands.h"
 #include "signals.h"
+#include <unistd.h>
 
 #define JOB_STATE_FG 1
 #define JOB_STATE_BG 2
@@ -34,6 +37,13 @@ char _line[CMD_LENGTH_MAX];
 =============================================================================*/
 int main(int argc, char* argv[])
 {
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = &sigintHandler ;
+    sa.sa_flags = SA_RESTART;
+    sigaction(CTRLZ, &sa, NULL);  //TODO WHERE THIS GOES?!
+    sigaction(CTRLC, &sa, NULL);  //TODO WHERE THIS GOES?!
+
 
     job empty_job;
     empty_job.PID = -1;
@@ -50,10 +60,7 @@ int main(int argc, char* argv[])
 
 
     char _cmd[CMD_LENGTH_MAX];
-    struct sigaction sa;
-    sa.sa_handler = &sigintHandler ;
-    sigaction(CTRLZ, &sa, NULL);  //TODO WHERE THIS GOES?!
-    sigaction(CTRLC, &sa, NULL);  //TODO WHERE THIS GOES?!
+
 
     job_to_fg_pid = -1;
     //some basic setting, NULL-like

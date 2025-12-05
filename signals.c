@@ -26,12 +26,9 @@ void sigintHandler(int sig){
     }*/
     pid_to_sig=job_to_fg_pid ;
     if (sig==CTRLZ) {    // we got CTRLZ
-
         printf("smash: caught CTRL+Z");
-        if (pid_to_sig>=0){
+        if (pid_to_sig>0){
             my_system_call(KILL,pid_to_sig,sig); // TODO add args
-
-
             if (current_job_index<JOBS_NUM_MAX){
                 strcpy(job_to_be_stopped.cmd,last_fg_cmd.cmd);
                 job_to_be_stopped.PID = pid_to_sig;
@@ -40,7 +37,6 @@ void sigintHandler(int sig){
                 job_to_be_stopped.time = time(NULL);
                 jobs_list[current_job_index] = job_to_be_stopped;
                 current_job_index++;
-
             }
             jobs_list[job_id_to_sig].state=JOB_STATE_STP ;
             //TODO handle error!
