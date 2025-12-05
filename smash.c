@@ -3,7 +3,7 @@
 * includes, defines, usings
 =============================================================================*/
 
-#define _POSIX_C_SOURCE 200809L
+#define _XOPEN_SOURCE 700//que?
 #include <stdlib.h>
 #include <string.h>
 #include "my_system_call.h"
@@ -29,9 +29,6 @@
 * global variables & data structures
 =============================================================================*/
 char _line[CMD_LENGTH_MAX];
-
-
-
 /*=============================================================================
 * main function
 =============================================================================*/
@@ -48,7 +45,7 @@ int main(int argc, char* argv[])
     job empty_job;
     empty_job.PID = -1;
     empty_job.JOB_ID = -1;
-    empty_job.cmd = {0};
+    strcpy(empty_job.cmd, "");
     empty_job.state = -1;
     empty_job.time = -1;
 
@@ -68,14 +65,14 @@ int main(int argc, char* argv[])
     empty_cmd.bg = -1 ;
     empty_cmd.nargs = -1;
     empty_cmd.internal = -1;
-    empty_cmd.args = {0};
-    empty_cmd.cmd = "";
+    empty_cmd.args[0] = NULL;
+    strcpy(empty_cmd.cmd, "");
 
     last_fg_cmd.bg = -1 ;
     last_fg_cmd.nargs = -1;
     last_fg_cmd.internal = -1;
-    last_fg_cmd.args = {0};
-    last_fg_cmd.cmd = "";
+    last_fg_cmd.args[0]=NULL;
+    strcpy(last_fg_cmd.cmd, "");
 
      int end_val=0;
     int external_fg_end_val=0;
