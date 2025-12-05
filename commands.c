@@ -43,7 +43,9 @@ const char* cmd_DB[11]= {"showpid","pwd","cd","jobs","kill","fg","bg","quit","di
 char old_cd[CMD_LENGTH_MAX] = {0};
 char current_cd[CMD_LENGTH_MAX] = {0};
 cmd cmd_list[ARGS_NUM_MAX]= {0};
-job* jobs_list[100];
+list* head_alias_list = NULL;
+
+job jobs_list[100];
 
 int smash_pid;
 int curr_fg_pid;
@@ -121,23 +123,23 @@ int fg(cmd cmd_obj) {
     }
     int job_idx_in_jobs = -1;
     if (job_id == NOARGSVAL ) { //if no job_id, two options, either take the maximal job_id,
-        int job_id = jobs_list[0]->JOB_ID;
-        if (jobs_list[0] == NULL) {
+        int job_id = jobs_list[0].JOB_ID;
+        if (jobs_list[0].PID == ERROR) {
             // TODO is this the best way to verify empty joblist????
             perrorSmash("fg", " jobs list is empty");
             return ERROR;
         }
         //find maximal job_id
         for (int i = 1; i < JOBS_NUM_MAX; i++) {
-            if (jobs_list[i]->JOB_ID > job_id) {
-                job_id = jobs_list[i]->JOB_ID;
+            if (jobs_list[i].JOB_ID > job_id) {
+                job_id = jobs_list[i].JOB_ID;
                 job_idx_in_jobs = i;
             }
         }
     }
     else{
         for (int j = 0; j < JOBS_NUM_MAX; ++j) {
-            if (jobs_list[j]->JOB_ID == job_id ){
+            if (jobs_list[j].JOB_ID == job_id ){
                 job_idx_in_jobs = j;
                 break;
             }
@@ -152,16 +154,16 @@ int fg(cmd cmd_obj) {
     }
     //now we know job_idx_in_jobs
     //TODO: verify print format
-    printf("%s %d", jobs_list[job_idx_in_jobs]->cmd, jobs_list[job_idx_in_jobs]->PID);
-    if (jobs_list[job_idx_in_jobs]->state == JOB_STATE_STP){ // if stopped, send it SIGCONT
-        jobs_list[job_idx_in_jobs]->state = JOB_STATE_FG;
-        my_system_call(SYS_KILL,jobs_list[job_idx_in_jobs]->PID,SIGCONT);
-        printf("%s", jobs_list[job_idx_in_jobs]->cmd);
+    printf("%s %d", jobs_list[job_idx_in_jobs].cmd, jobs_list[job_idx_in_jobs].PID);
+    if (jobs_list[job_idx_in_jobs].state == JOB_STATE_STP){ // if stopped, send it SIGCONT
+        jobs_list[job_idx_in_jobs].state = JOB_STATE_FG;
+        my_system_call(SYS_KILL,jobs_list[job_idx_in_jobs].PID,SIGCONT);
+        printf("%s", jobs_list[job_idx_in_jobs].cmd);
     }
     else{
-        jobs_list[job_idx_in_jobs]->state = JOB_STATE_FG;
+        jobs_list[job_idx_in_jobs].state = JOB_STATE_FG;
     }
-    curr_fg_pid = jobs_list[job_id]->PID;
+    curr_fg_pid = jobs_list[job_id].PID;
     my_system_call(SYS_WAITPID,curr_fg_pid);
     return 0;
 }
@@ -174,16 +176,16 @@ int bg(cmd cmd_obj){
     }
     int job_idx_in_jobs = -1;
     if (job_id == NOARGSVAL ){
-        int maxId = jobs_list[0]->JOB_ID;
+        int maxId = jobs_list[0].JOB_ID;
         for (int i = 1; i < JOBS_NUM_MAX; i++) {
             // TODO: MAKE SURE REGARDING NO JOB_ID AND NO JOB IN STOPPED, BECAUSE WE SAID IT IS EQUAL TO MAX, ALSO MAKE SURE ARG FORMAT IS OKAY
 
-            if ( ( ( jobs_list[i]->JOB_ID < 100 )&& (jobs_list[i]->JOB_ID > 100 )  ) &&  (jobs_list[i]->JOB_ID > maxId )   ) {
-                maxId = jobs_list[i]->JOB_ID;
+            if ( ( ( jobs_list[i].JOB_ID < 100 )&& (jobs_list[i].JOB_ID > 100 )  ) &&  (jobs_list[i].JOB_ID > maxId )   ) {
+                maxId = jobs_list[i].JOB_ID;
                 job_idx_in_jobs = i;
             }
         }
-        if ( (job_idx_in_jobs !=ERROR) && (jobs_list[job_idx_in_jobs]->state != JOB_STATE_STP )){
+        if ( (job_idx_in_jobs !=ERROR) && (jobs_list[job_idx_in_jobs].state != JOB_STATE_STP )){
             char msg[CMD_LENGTH_MAX];
             sprintf(msg, "job id %d is already in background", job_id);
             perrorSmash("bg",msg);
@@ -192,7 +194,7 @@ int bg(cmd cmd_obj){
     }
     else{
         for (int j = 0; j < JOBS_NUM_MAX ; ++j) {
-            if (jobs_list[j]->JOB_ID == job_id ){
+            if (jobs_list[j].JOB_ID == job_id ){
                 job_idx_in_jobs = j;
                 break;
             }
@@ -206,7 +208,7 @@ int bg(cmd cmd_obj){
         }
         else{ //in case we found the JOB_ID, verify it is stopped.
 
-            if (jobs_list[job_idx_in_jobs]->state != JOB_STATE_STP){ //if not stopped, err
+            if (jobs_list[job_idx_in_jobs].state != JOB_STATE_STP){ //if not stopped, err
                 char msg[CMD_LENGTH_MAX];
                 sprintf(msg, "job id %d is already in background", job_id);
                 perrorSmash("bg",msg);
@@ -215,9 +217,9 @@ int bg(cmd cmd_obj){
         }
     }
     // if alles gut
-    printf("%s %d", jobs_list[job_idx_in_jobs]->cmd, jobs_list[job_idx_in_jobs]->PID);
-    my_system_call(SYS_KILL,jobs_list[job_idx_in_jobs]->PID,SIGCONT); //sending SIGCONT to the stopped job
-    jobs_list[job_idx_in_jobs]->state =  JOB_STATE_BG;
+    printf("%s %d", jobs_list[job_idx_in_jobs].cmd, jobs_list[job_idx_in_jobs].PID);
+    my_system_call(SYS_KILL,jobs_list[job_idx_in_jobs].PID,SIGCONT); //sending SIGCONT to the stopped job
+    jobs_list[job_idx_in_jobs].state =  JOB_STATE_BG;
     return 0;
 }
 
@@ -228,15 +230,15 @@ int quit(cmd cmd_obj){// kill the smash
     }
     if ( strcmp(cmd_obj.args[1],"kill") == 0){   //kill jobs in order.
         for (int i = 0; i < JOBS_NUM_MAX; ++i) {
-            if (jobs_list[i] == NULL) continue;
-            printf("[%d] %s - ",jobs_list[i]->JOB_ID,jobs_list[i]->cmd);
-            my_system_call(SYS_KILL, jobs_list[i]->PID, SIGTERM);
+            if (jobs_list[i].PID == ERROR) continue;
+            printf("[%d] %s - ",jobs_list[i].JOB_ID,jobs_list[i].cmd);
+            my_system_call(SYS_KILL, jobs_list[i].PID, SIGTERM);
             printf("sending SIGTERM... ");
             fflush(stdout);
             bool job_is_dead = false;
             for (int second = 0; second < 5 ; ++second) {
 
-                int still_alive = my_system_call(SYS_KILL,jobs_list[i]->PID,0);
+                int still_alive = my_system_call(SYS_KILL,jobs_list[i].PID,0);
                 if (still_alive == ERROR){
                     //eliminated the process successfully :)
                     job_is_dead=true;
@@ -249,12 +251,12 @@ int quit(cmd cmd_obj){// kill the smash
                 fflush(stdout);
             }
             else{ // 5 sec passed but job is still alive, send SIGKILL
-                my_system_call(SYS_KILL, jobs_list[i]->PID, SIGKILL);
+                my_system_call(SYS_KILL, jobs_list[i].PID, SIGKILL);
                 printf("sending SIGKILL... done");
                 fflush(stdout);
             }
             int status;
-            my_system_call(SYS_WAITPID, jobs_list[i]->PID, &status, 0); //small wait for Process table to update - needed?
+            my_system_call(SYS_WAITPID, jobs_list[i].PID, &status, 0); //small wait for Process table to update - needed?
             printf("\n");
         }
     }
@@ -311,9 +313,9 @@ int kill(cmd cmd_obj) {
         return ERROR;
     }
     for (int i=0 ; i < 100 ; i++){
-        if (job_id == i && jobs_list[i] != NULL ){
-            my_system_call(5, jobs_list[i]->PID, signum); //send signal
-            printf("signal %d was sent to pid %d", signum, jobs_list[i]->PID); // maybe we should define all global variables in commands.h ??
+        if (job_id == i && jobs_list[i].PID != ERROR ){
+            my_system_call(5, jobs_list[i].PID, signum); //send signal
+            printf("signal %d was sent to pid %d", signum, jobs_list[i].PID); // maybe we should define all global variables in commands.h ??
             return 0;
         }
     }
@@ -404,13 +406,13 @@ int jobs(cmd cmd_obj){
     else {
         for (int i = 0 ; i<JOBS_NUM_MAX ; i++){
 			time_t curr_time = time(NULL);
-            if (jobs_list[i] != NULL){
-				float diff = difftime(curr_time, jobs_list[i]->time);
-                if (jobs_list[i]->state == JOB_STATE_STP){
-                    printf("[%d] %s: %d %f secs (stopped)\n", i, jobs_list[i]->cmd, jobs_list[i]->PID, diff);
+            if (jobs_list[i].PID != ERROR){
+				float diff = difftime(curr_time, jobs_list[i].time);
+                if (jobs_list[i].state == JOB_STATE_STP){
+                    printf("[%d] %s: %d %f secs (stopped)\n", i, jobs_list[i].cmd, jobs_list[i].PID, diff);
                 }
                 else{
-                    printf("[%d] %s: %d %f secs\n", i, jobs_list[i]->cmd, jobs_list[i]->PID, diff);
+                    printf("[%d] %s: %d %f secs\n", i, jobs_list[i].cmd, jobs_list[i].PID, diff);
                 }
             }
         }
@@ -482,18 +484,17 @@ void perrorSmash(const char* cmd, const char* msg)
 }
 
 //example function for parsing commands
+
+
 cmd* parseCmdExample(char* line)
 {
-
-	cmd cmd_obj;
-	cmd_obj.bg = 0;
-	cmd_obj.internal = 0;
-    char* delimiters = " \t\n"; //parsing should be done by spaces, tabs or newlines
-    strcpy(cmd_obj.cmd,strtok(line, delimiters));//read strtok documentation - parses string by delimiters
-    if(!cmd_obj.cmd)
-        return INVALID_COMMAND; //this means no tokens were found, most like since command is invalid
-
+    cmd cmd_obj;
+    cmd_obj.bg = 0;
+    cmd_obj.internal = 0;
     cmd_obj.nargs = 0;
+    char* delimiters = " \t\n="; //parsing should be done by spaces, tabs or newlines
+    strcpy(cmd_obj.cmd,strtok(line, delimiters));//read strtok documentation - parses string by delimiters
+    if(strcmp(cmd_obj.cmd,0) == 0) return INVALID_COMMAND; //this means no tokens were found, most like since command is invalid
     cmd_obj.args[0] = cmd_obj.cmd; //first token before spaces/tabs/newlines should be command name
     for(int i = 1; i < ARGS_NUM_MAX; i++)
     {
@@ -503,171 +504,174 @@ cmd* parseCmdExample(char* line)
         cmd_obj.nargs++;
     }
     /* TODO : REMOVE COMMENT */
-	///////////////////// handle alias //////////////////////////////////
-	if (strcmp(cmd_obj.cmd, "alias") == 0) {
-		list* new_node = (list*)malloc(sizeof(list));
 
-		if (new_node == NULL) {
-		    // if malloc fails
-		    return -1;
-		}
-		
-		// 1. אתחול הנתונים
-		// יש לבצע העתקה או אתחול של המערכים (cmd ו-alias) כאן.
-		// לדוגמה, איפוס המערכים:
-		memset(new_node->og_cmd_list, 0, sizeof(new_node->og_cmd_list));
-		memset(new_node->alias, 0, sizeof(new_node->alias));
-		strcpy(new_node->alias, cmd_obj.args[1]);
-		
-	int num_cmd=0;
-    int start_of_cmd=0;
-    int end_of_cmd=-1;
-    new_node->og_cmd_list[num_cmd]=cmd_obj; // 1 cmd only
-    for (int i = 3; i < ARGS_NUM_MAX; ++i) {
-        if( strcmp(cmd_obj.args[i],"&&")  == 0 ){
-           cmd cmd_obj_tmp;
-            cmd_obj_tmp.bg=0;
-           end_of_cmd=i;
-            cmd_obj_tmp.nargs=end_of_cmd-start_of_cmd-1;
-            strcpy(cmd_obj_tmp.cmd,cmd_obj.args[start_of_cmd]);
-            for (int k = i-1; k >= start_of_cmd ; k--) {
-                strcpy(cmd_obj_tmp.args[k-start_of_cmd],cmd_obj.args[k]);
+
+
+    /// TODO add the && checkup here before aliasing
+
+
+    ///////////////////// handle alias //////////////////////////////////
+    if (strcmp(cmd_obj.cmd, "alias") == 0) {
+        list* new_node = (list*)malloc(sizeof(list));
+        if (new_node == NULL) {
+            // if malloc fails
+            return ERROR;
+        }
+        memset(new_node->og_cmd_list, 0, sizeof(new_node->og_cmd_list));
+        memset(new_node->alias, 0, sizeof(new_node->alias));
+        strcpy(new_node->alias, cmd_obj.args[1]);
+
+
+        int num_cmd=0;
+        int start_of_cmd=0;
+        int end_of_cmd=-1;
+        new_node->og_cmd_list[num_cmd]=cmd_obj; // 1 cmd only
+        for (int i = 2; i < ARGS_NUM_MAX; ++i) {
+            if( strcmp(cmd_obj.args[i],"&&")  == 0 ){
+                cmd cmd_obj_tmp;
+                cmd_obj_tmp.bg=0;
+                end_of_cmd=i;
+                cmd_obj_tmp.nargs=end_of_cmd-start_of_cmd-1;
+                strcpy(cmd_obj_tmp.cmd,cmd_obj.args[start_of_cmd]);
+                for (int k = i-1; k >= start_of_cmd ; k--) {
+                    strcpy(cmd_obj_tmp.args[k-start_of_cmd],cmd_obj.args[k]);
+                }
+
+                //start_of end of
+                for (int i=0 ; i<11 ; i++) {
+                    if (!strcmp(cmd_DB[i], cmd_obj_tmp.cmd)){
+                        cmd_obj_tmp.internal = 1;
+                    }
+                }
+                start_of_cmd=end_of_cmd+1;
+                new_node->og_cmd_list[num_cmd]=cmd_obj_tmp;
+                num_cmd++;
             }
+        }
 
-            //start_of end of
+        //if only one cmd
+        if (num_cmd == 0) {
             for (int i=0 ; i<11 ; i++) {
-                if (!strcmp(cmd_DB[i], cmd_obj_tmp.cmd)){
-                    cmd_obj_tmp.internal = 1;
+                if (!strcmp(cmd_DB[i], cmd_obj.cmd)){
+                    new_node->og_cmd_list[num_cmd].internal = 1;
                 }
             }
-            start_of_cmd=end_of_cmd+1;
-            new_node->og_cmd_list[num_cmd]=cmd_obj_tmp;
-            num_cmd++;
+
+            for (int i = 19 ; i>0 ; i--) {
+                if ( strcmp(cmd_obj.args[i],"&") == 0 ){
+                    new_node->og_cmd_list[num_cmd].bg = 1;
+                    new_node->og_cmd_list[num_cmd].nargs--;
+                }
+            }
         }
-    }
-		
-	//if only one cmd
-	if (num_cmd == 0) {
-    for (int i=0 ; i<11 ; i++) {
-        if (!strcmp(cmd_DB[i], cmd_obj.cmd)){
-            new_node->og_cmd_list[num_cmd].internal = 1;
+        // update ptrs
+        new_node->next = *head_alias_list;
+        new_node->prev = NULL; // first node will point to NULL
+
+        // update prev node only if it is not the first node
+        if (*head_alias_list != NULL) {
+            (*head_alias_list)->prev = new_node;
         }
+
+        // update head of the list - to be the new node
+        *head_alias_list = new_node;
+
+        //return new_node;
     }
 
-	for (int i = 19 ; i>0 ; i--) {
-		if ( strcmp(cmd_obj.args[i],"&") == 0 ){
-			new_node->og_cmd_list[num_cmd].bg = 1;
-			new_node->og_cmd_list[num_cmd].nargs--;
-		}
-	}
-	}
-		// update ptrs
-		new_node->next = *head_alias_list;
-    	new_node->prev = NULL; // first node will point to NULL
-    
-	    // update prev node only if it is not the first node
-	    if (*head_alias_list != NULL) {
-	        (*head_alias_list)->prev = new_node;
-	    }
-	    
-	    // update head of the list - to be the new node
-	    *head_alias_list = new_node;
-			
-			//return new_node;
-	}
 
+        ////////////////////////////////////////////////////////////
+        // handle "unalias" or aliased cmd
+    else {
+        if (strcmp(cmd_obj.cmd, "unalias")) {
+            list* current = head_alias_list;
 
-	////////////////////////////////////////////////////////////
-	// handle "unalias" or aliased cmd
-	else {
-		if (strcmp(cmd_obj.cmd, "unalias")) {
-			list* current = head_alias_list;
+            while (current != NULL) {
+                if ( strcmp(current->alias, cmd_obj.args[1]) ) {
+                    if (current->prev == NULL) {
+                        // if current is head - update head
+                        *head_alias_list = current->next;
+                    } else {
+                        // update the "next" ptr of the prev node
+                        current->prev->next = current->next;
+                    }
 
-			while (current != NULL) {
-			    if ( strcmp(current->alias, cmd_obj.args[1]) ) {
-					if (current->prev == NULL) {
-				        // if current is head - update head
-				        *head_alias_list = current->next;
-				    } else {
-				        // update the "next" ptr of the prev node
-				        current->prev->next = current->next;
-				    }
-				
-				    if (current->next != NULL) {
-				        // in both cases update the next node's prev if it exists
-				        current->next->prev = current->prev;
-				    }
-				
-				    // release memory
-				    free(current);
-				}
-			    
-			    current = current->next;
-			}
-			perrorSmash("unalias", "command not found");
-				
-		}
-		else {
-		list* current = head_alias_list;
+                    if (current->next != NULL) {
+                        // in both cases update the next node's prev if it exists
+                        current->next->prev = current->prev;
+                    }
 
-		while (current != NULL) {
-		    if ( strcmp(current->alias, cmd_obj.cmd) ) {
-				int j = 0;
-				while (current->og_cmd_list[j] != NULL) {
-					cmd_list[j] = current->og_cmd_list[j];
-				}
-				return cmd_list; 
-			}
-		    
-		    current = current->next;
-		}
-		}
-		
-	//// we get here if we didnt find alias
+                    // release memory
+                    free(current);
+                    break;
+                }
+
+                current = current->next;
+            }
+            perrorSmash("unalias", "command not found");
+
+        }
+        else {
+            list* current = head_alias_list;
+
+            while (current != NULL) {
+                if ( strcmp(current->alias, cmd_obj.cmd) ) {
+                    int j = 0;
+                    while (current->og_cmd_list[j] != NULL) {
+                        cmd_list[j] = current->og_cmd_list[j];
+                        j++;
+                    }
+                    return cmd_list;
+                }
+                current = current->next;
+            }
+        }
+
+        //// we get here if we didnt find alias
 
 /// cdhello
-    int num_cmd=0;
-    int start_of_cmd=0;
-    int end_of_cmd=-1;
-    cmd_list[num_cmd]=cmd_obj; // 1 cmd only
-    for (int i = 0; i < ARGS_NUM_MAX; ++i) {
-        if( strcmp(cmd_obj.args[i],"&&")  == 0 ){
-           cmd cmd_obj_tmp;
-            cmd_obj_tmp.bg=0;
-           end_of_cmd=i;
-            cmd_obj_tmp.nargs=end_of_cmd-start_of_cmd-1;
-            strcpy(cmd_obj_tmp.cmd,cmd_obj.args[start_of_cmd]);
-            for (int k = i-1; k >= start_of_cmd ; k--) {
-                strcpy(cmd_obj_tmp.args[k-start_of_cmd],cmd_obj.args[k]);
-            }
-
-            //start_of end of
-            for (int i=0 ; i<11 ; i++) {
-                if (!strcmp(cmd_DB[i], cmd_obj_tmp.cmd)){
-                    cmd_obj_tmp.internal = 1;
+        int num_cmd=0;
+        int start_of_cmd=0;
+        int end_of_cmd=-1;
+        cmd_list[num_cmd]=cmd_obj; // 1 cmd only
+        for (int i = 0; i < ARGS_NUM_MAX; ++i) {
+            if( strcmp(cmd_obj.args[i],"&&")  == 0 ){
+                cmd cmd_obj_tmp;
+                cmd_obj_tmp.bg=0;
+                end_of_cmd=i;
+                cmd_obj_tmp.nargs=end_of_cmd-start_of_cmd-1;
+                strcpy(cmd_obj_tmp.cmd,cmd_obj.args[start_of_cmd]);
+                for (int k = i-1; k >= start_of_cmd ; k--) {
+                    strcpy(cmd_obj_tmp.args[k-start_of_cmd],cmd_obj.args[k]);
                 }
+
+                //start_of end of
+                for (int i=0 ; i<11 ; i++) {
+                    if (!strcmp(cmd_DB[i], cmd_obj_tmp.cmd)){
+                        cmd_obj_tmp.internal = 1;
+                    }
+                }
+                start_of_cmd=end_of_cmd+1;
+                cmd_list[num_cmd]=cmd_obj_tmp;
+                num_cmd++;
             }
-            start_of_cmd=end_of_cmd+1;
-            cmd_list[num_cmd]=cmd_obj_tmp;
-            num_cmd++;
+        }
+
+
+        for (int i=0 ; i<11 ; i++) {
+            if (!strcmp(cmd_DB[i], cmd_obj.cmd)){
+                cmd_obj.internal = 1;
+            }
+        }
+
+        for (int i = 19 ; i>0 ; i--) {
+            if ( strcmp(cmd_obj.args[i],"&") == 0 ){
+                cmd_obj.bg = 1;
+                cmd_obj.nargs--;
+            }
         }
     }
-
-
-    for (int i=0 ; i<11 ; i++) {
-        if (!strcmp(cmd_DB[i], cmd_obj.cmd)){
-            cmd_obj.internal = 1;
-        }
-    }
-
-	for (int i = 19 ; i>0 ; i--) {
-		if ( strcmp(cmd_obj.args[i],"&") == 0 ){
-			cmd_obj.bg = 1;
-			cmd_obj.nargs--;
-		}
-	}
-	}
-	 /* TODO : REMOVE COMMENT */
+    /* TODO : REMOVE COMMENT */
     /*
     At this point cmd contains the command string and the args array contains
     the arguments. You can return them via struct/class, for example in C:

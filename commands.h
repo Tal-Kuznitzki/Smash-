@@ -116,7 +116,7 @@ int jobs(cmd cmd_obj);
 int job_to_fg_pid;
 cmd last_fg_cmd;
 
-job* jobs_list[JOBS_NUM_MAX];
+job jobs_list[JOBS_NUM_MAX];
 int current_job_index;
 cmd cmd_list[ARGS_NUM_MAX];
 job job_to_be_stopped;

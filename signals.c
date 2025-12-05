@@ -42,7 +42,7 @@ void sigintHandler(int sig){
                 current_job_index++;
 
             }
-            jobs_list[job_id_to_sig]->state=JOB_STATE_STP ;
+            jobs_list[job_id_to_sig].state=JOB_STATE_STP ;
             //TODO handle error!
             printf("process %d was stopped ",pid_to_sig);
 

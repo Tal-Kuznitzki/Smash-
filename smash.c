@@ -26,7 +26,7 @@
 * global variables & data structures
 =============================================================================*/
 char _line[CMD_LENGTH_MAX];
-list* head_alias_list = NULL;
+
 
 
 /*=============================================================================
@@ -34,6 +34,21 @@ list* head_alias_list = NULL;
 =============================================================================*/
 int main(int argc, char* argv[])
 {
+
+    job empty_job;
+    empty_job.PID = -1;
+    empty_job.JOB_ID = -1;
+    empty_job.cmd = {0};
+    empty_job.state = -1;
+    empty_job.time = -1;
+
+
+    for (int i = 0; i <JOBS_NUM_MAX ; ++i) {
+        jobs_list[i]=empty_job;
+    }
+
+
+
     char _cmd[CMD_LENGTH_MAX];
     struct sigaction sa;
     sa.sa_handler = &sigintHandler ;
@@ -42,13 +57,19 @@ int main(int argc, char* argv[])
 
     job_to_fg_pid = -1;
     //some basic setting, NULL-like
-    /*
+    cmd empty_cmd;
+    empty_cmd.bg = -1 ;
+    empty_cmd.nargs = -1;
+    empty_cmd.internal = -1;
+    empty_cmd.args = {0};
+    empty_cmd.cmd = "";
+
     last_fg_cmd.bg = -1 ;
     last_fg_cmd.nargs = -1;
     last_fg_cmd.internal = -1;
     last_fg_cmd.args = {0};
     last_fg_cmd.cmd = "";
-    */
+
      int end_val=0;
     int external_fg_end_val=0;
     smash_pid =  getpid();
@@ -59,9 +80,9 @@ int main(int argc, char* argv[])
         //execute command
         cmd* cmd_list_after_parse = parseCommandExample(_cmd);
         int cmd_list_indx=0;
-        int retVal_Cmd_tmp=0;
+        //int retVal_Cmd_tmp=0;
         job bg_internal_job;
-        while (&cmd_list_after_parse[cmd_list_indx]!=NULL){// TODO IS OKAY?
+        while (cmd_list_after_parse[cmd_list_indx].bg== ERROR){
              cmd cmd_after_parse=cmd_list_after_parse[cmd_list_indx];
 
             if (cmd_after_parse.internal) { //internal
@@ -72,6 +93,10 @@ int main(int argc, char* argv[])
                         end_val= QUITVAL;
                         break; //we end the program
                     } else if ( output == ERROR  ){
+                        while(cmd_list_after_parse[cmd_list_indx].bg!=ERROR) {
+                            cmd_list_after_parse[cmd_list_indx].bg=ERROR;
+                            cmd_list_indx++;
+                        }
                         break;
                     }
 
@@ -88,7 +113,7 @@ int main(int argc, char* argv[])
                             break;
                         }
                         current_job_index = (current_job_index>bg_internal_job.JOB_ID) ? bg_internal_job.JOB_ID : current_job_index ;
-                        jobs_list[bg_internal_job.JOB_ID] = NULL ;
+                        jobs_list[bg_internal_job.JOB_ID].PID = ERROR ;
                     }
                     else { //father process
                         bg_internal_job.JOB_ID = current_job_index ;
@@ -117,7 +142,7 @@ int main(int argc, char* argv[])
                         my_system_call(2,cmd_after_parse);
                         //TODO ERROR CHAINING TO OUTSIDE
                         current_job_index = (current_job_index>bg_external_job.JOB_ID) ? bg_external_job.JOB_ID : current_job_index ;
-                        jobs_list[bg_external_job.JOB_ID] = NULL ;
+                        jobs_list[bg_external_job.JOB_ID].PID = ERROR ;
                         exit(0);
                     }
                     else // if father process
@@ -168,7 +193,7 @@ int main(int argc, char* argv[])
             }
             // if we got here it means we are done processing the privious command
             // TODO: check with tal about jobs in the bg!!
-            cmd_list_after_parse[cmd_list_indx] = NULL; //delete it from the list because it's a global list!
+            cmd_list_after_parse[cmd_list_indx].bg = ERROR; //delete it from the list because it's a global list!
             cmd_list_indx++;
         }
         if (end_val == QUITVAL) break;
