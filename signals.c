@@ -26,7 +26,7 @@ void sigintHandler(int sig){
     }*/
     pid_to_sig=job_to_fg_pid ;
     if (sig==CTRLZ) {    // we got CTRLZ
-        printf("smash: caught CTRL+Z");
+        perrorSmash("smash","caught CTRL+Z");
         if (pid_to_sig>0){
             my_system_call(KILL,pid_to_sig,sig); // TODO add args
             if (current_job_index<JOBS_NUM_MAX){
@@ -40,19 +40,20 @@ void sigintHandler(int sig){
             }
             jobs_list[job_id_to_sig].state=JOB_STATE_STP ;
             //TODO handle error!
-            printf("process %d was stopped ",pid_to_sig);
-
+            char msg[CMD_LENGTH_MAX];
+            sprintf(msg,"process %d was stopped ",pid_to_sig);
+            perrorSmash("smash",msg);
         }
-
-
     }
     else if (sig==CTRLC){
-        printf("smash: caught CTRL+C");
+        perrorSmash("smash","caught CTRL+C");
         if (pid_to_sig>=0) {
             my_system_call(SYS_KILL, pid_to_sig, SIGKILL);
             //current_job_index = (current_job_index>job_id_to_sig) ? job_id_to_sig : current_job_index ;
             // jobs_list[job_id_to_sig] = NULL;
-            printf("process %d was killed ",pid_to_sig);
+            char msg[CMD_LENGTH_MAX];
+            sprintf(msg,"process %d was killed ",pid_to_sig);
+            perrorSmash("smash",msg);
         }
         else{
             perrorSmash("smash","ctrl-C failed"); //TODO verify if need
