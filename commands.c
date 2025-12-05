@@ -304,7 +304,7 @@ int pwd(cmd cmd_obj) {
     }
 }
 
-int kill(cmd cmd_obj) {
+int my_kill(cmd cmd_obj) {
 	int signum = atoi(cmd_obj.args[1]);
 	int job_id = atoi(cmd_obj.args[2]);
     if ( ( (cmd_obj.nargs ) != 2)  || ( ( atoi(cmd_obj.args[1]) )  < 1) || ( ( atoi(cmd_obj.args[1]) ) > 64) ) { // make sure signum is a valid signum (1<=args[1]<=64)
@@ -420,9 +420,105 @@ int jobs(cmd cmd_obj){
     }
 }
 
-int alias( char* new_cmd_name, char* new_cmd){
+int alias(cmd cmd_obj){
+
+		int num_cmd = 0;
+	 	int start_of_cmd=0;
+        int end_of_cmd=-1;
+        list* new_node = (list*)malloc(sizeof(list));
+        if (new_node == NULL) {
+            // if malloc fails
+            return ERROR;
+        }
+        memset(new_node->og_cmd_list, 0, sizeof(new_node->og_cmd_list));
+        memset(new_node->alias, 0, sizeof(new_node->alias));
+        strcpy(new_node->alias, cmd_obj.args[1]);
+
+        new_node->og_cmd_list[num_cmd]=cmd_obj; // 1 cmd only
+        for (int i = 2; i < ARGS_NUM_MAX; ++i) {
+            if( strcmp(cmd_obj.args[i],"&&")  == 0 ){
+                cmd cmd_obj_tmp;
+                cmd_obj_tmp.bg=0;
+                end_of_cmd=i;
+                cmd_obj_tmp.nargs=end_of_cmd-start_of_cmd-1;
+                strcpy(cmd_obj_tmp.cmd,cmd_obj.args[start_of_cmd]);
+                for (int k = i-1; k >= start_of_cmd ; k--) {
+                    strcpy(cmd_obj_tmp.args[k-start_of_cmd],cmd_obj.args[k]);
+                }
+
+                //start_of end of
+                for (int i=0 ; i<11 ; i++) {
+                    if (!strcmp(cmd_DB[i], cmd_obj_tmp.cmd)){
+                        cmd_obj_tmp.internal = 1;
+                    }
+                }
+                start_of_cmd=end_of_cmd+1;
+                new_node->og_cmd_list[num_cmd]=cmd_obj_tmp;
+                num_cmd++;
+            }
+        }
+
+        //if only one cmd
+        if (num_cmd == 0) {
+            for (int i=0 ; i<11 ; i++) {
+                if (!strcmp(cmd_DB[i], cmd_obj.cmd)){
+                    new_node->og_cmd_list[num_cmd].internal = 1;
+                }
+            }
+
+            for (int i = 19 ; i>0 ; i--) {
+                if ( strcmp(cmd_obj.args[i],"&") == 0 ){
+                    new_node->og_cmd_list[num_cmd].bg = 1;
+                    new_node->og_cmd_list[num_cmd].nargs--;
+                }
+            }
+        }
+        // update ptrs
+        new_node->next = *head_alias_list;
+        new_node->prev = NULL; // first node will point to NULL
+
+        // update prev node only if it is not the first node
+        if (*head_alias_list != NULL) {
+            (*head_alias_list)->prev = new_node;
+        }
+
+        // update head of the list - to be the new node
+        *head_alias_list = new_node;
+
+        //return new_node;
 
     return 0;
+
+}
+
+int unalias(cmd cmd_obj) {
+
+	list* current = head_alias_list;
+
+            while (current != NULL) {
+                if ( strcmp(current->alias, cmd_obj.args[1]) ) {
+                    if (current->prev == NULL) {
+                        // if current is head - update head
+                        *head_alias_list = current->next;
+                    } else {
+                        // update the "next" ptr of the prev node
+                        current->prev->next = current->next;
+                    }
+
+                    if (current->next != NULL) {
+                        // in both cases update the next node's prev if it exists
+                        current->next->prev = current->prev;
+                    }
+
+                    // release memory
+                    free(current);
+					return 0;
+                }
+
+                current = current->next;
+            }
+            perrorSmash("unalias", "command not found");
+			return ERROR;
 
 }
 
@@ -505,136 +601,12 @@ cmd* parseCmdExample(char* line)
     }
     /* TODO : REMOVE COMMENT */
 
-
-
-    /// TODO add the && checkup here before aliasing
-
-
-    ///////////////////// handle alias //////////////////////////////////
-    if (strcmp(cmd_obj.cmd, "alias") == 0) {
-        list* new_node = (list*)malloc(sizeof(list));
-        if (new_node == NULL) {
-            // if malloc fails
-            return ERROR;
-        }
-        memset(new_node->og_cmd_list, 0, sizeof(new_node->og_cmd_list));
-        memset(new_node->alias, 0, sizeof(new_node->alias));
-        strcpy(new_node->alias, cmd_obj.args[1]);
-
-
-        int num_cmd=0;
-        int start_of_cmd=0;
-        int end_of_cmd=-1;
-        new_node->og_cmd_list[num_cmd]=cmd_obj; // 1 cmd only
-        for (int i = 2; i < ARGS_NUM_MAX; ++i) {
-            if( strcmp(cmd_obj.args[i],"&&")  == 0 ){
-                cmd cmd_obj_tmp;
-                cmd_obj_tmp.bg=0;
-                end_of_cmd=i;
-                cmd_obj_tmp.nargs=end_of_cmd-start_of_cmd-1;
-                strcpy(cmd_obj_tmp.cmd,cmd_obj.args[start_of_cmd]);
-                for (int k = i-1; k >= start_of_cmd ; k--) {
-                    strcpy(cmd_obj_tmp.args[k-start_of_cmd],cmd_obj.args[k]);
-                }
-
-                //start_of end of
-                for (int i=0 ; i<11 ; i++) {
-                    if (!strcmp(cmd_DB[i], cmd_obj_tmp.cmd)){
-                        cmd_obj_tmp.internal = 1;
-                    }
-                }
-                start_of_cmd=end_of_cmd+1;
-                new_node->og_cmd_list[num_cmd]=cmd_obj_tmp;
-                num_cmd++;
-            }
-        }
-
-        //if only one cmd
-        if (num_cmd == 0) {
-            for (int i=0 ; i<11 ; i++) {
-                if (!strcmp(cmd_DB[i], cmd_obj.cmd)){
-                    new_node->og_cmd_list[num_cmd].internal = 1;
-                }
-            }
-
-            for (int i = 19 ; i>0 ; i--) {
-                if ( strcmp(cmd_obj.args[i],"&") == 0 ){
-                    new_node->og_cmd_list[num_cmd].bg = 1;
-                    new_node->og_cmd_list[num_cmd].nargs--;
-                }
-            }
-        }
-        // update ptrs
-        new_node->next = *head_alias_list;
-        new_node->prev = NULL; // first node will point to NULL
-
-        // update prev node only if it is not the first node
-        if (*head_alias_list != NULL) {
-            (*head_alias_list)->prev = new_node;
-        }
-
-        // update head of the list - to be the new node
-        *head_alias_list = new_node;
-
-        //return new_node;
-    }
-
-
-        ////////////////////////////////////////////////////////////
-        // handle "unalias" or aliased cmd
-    else {
-        if (strcmp(cmd_obj.cmd, "unalias")) {
-            list* current = head_alias_list;
-
-            while (current != NULL) {
-                if ( strcmp(current->alias, cmd_obj.args[1]) ) {
-                    if (current->prev == NULL) {
-                        // if current is head - update head
-                        *head_alias_list = current->next;
-                    } else {
-                        // update the "next" ptr of the prev node
-                        current->prev->next = current->next;
-                    }
-
-                    if (current->next != NULL) {
-                        // in both cases update the next node's prev if it exists
-                        current->next->prev = current->prev;
-                    }
-
-                    // release memory
-                    free(current);
-                    break;
-                }
-
-                current = current->next;
-            }
-            perrorSmash("unalias", "command not found");
-
-        }
-        else {
-            list* current = head_alias_list;
-
-            while (current != NULL) {
-                if ( strcmp(current->alias, cmd_obj.cmd) ) {
-                    int j = 0;
-                    while (current->og_cmd_list[j] != NULL) {
-                        cmd_list[j] = current->og_cmd_list[j];
-                        j++;
-                    }
-                    return cmd_list;
-                }
-                current = current->next;
-            }
-        }
-
-        //// we get here if we didnt find alias
-
-/// cdhello
         int num_cmd=0;
         int start_of_cmd=0;
         int end_of_cmd=-1;
         cmd_list[num_cmd]=cmd_obj; // 1 cmd only
         for (int i = 0; i < ARGS_NUM_MAX; ++i) {
+			int old_num_cmd = num_cmd;
             if( strcmp(cmd_obj.args[i],"&&")  == 0 ){
                 cmd cmd_obj_tmp;
                 cmd_obj_tmp.bg=0;
@@ -646,14 +618,35 @@ cmd* parseCmdExample(char* line)
                 }
 
                 //start_of end of
-                for (int i=0 ; i<11 ; i++) {
-                    if (!strcmp(cmd_DB[i], cmd_obj_tmp.cmd)){
+                for (int j=0 ; j<11 ; j++) {
+                    if (!strcmp(cmd_DB[j], cmd_obj_tmp.cmd)){
                         cmd_obj_tmp.internal = 1;
                     }
                 }
+
+			// check if cmd is aliased - if there was alias, we will update the cmd_list here
+				if (cmd_obj_tmp.internal == 0) {
+					list* current = head_alias_list;
+		            while (current != NULL) {
+		                if ( strcmp(current->alias, cmd_obj_temp.cmd) ) {
+							int j = 0;
+		                    while (current->og_cmd_list[j] != NULL) {
+		                        cmd_list[num_cmd] = current->og_cmd_list[j];
+		                        j++;
+								num_cmd++;
+								break;
+		                    }
+		                }
+		                current = current->next;
+		            }
+				}
+				
                 start_of_cmd=end_of_cmd+1;
-                cmd_list[num_cmd]=cmd_obj_tmp;
-                num_cmd++;
+				// only if there wasnt alias
+				if (old_num_cmd == num_cmd ) {
+	                cmd_list[num_cmd]=cmd_obj_tmp;
+	                num_cmd++;
+				}
             }
         }
 
@@ -670,7 +663,7 @@ cmd* parseCmdExample(char* line)
                 cmd_obj.nargs--;
             }
         }
-    }
+
     /* TODO : REMOVE COMMENT */
     /*
     At this point cmd contains the command string and the args array contains
@@ -688,6 +681,7 @@ cmd* parseCmdExample(char* line)
     */
     return cmd_list;
 }
+
 
 
 
