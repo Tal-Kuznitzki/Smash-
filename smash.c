@@ -86,13 +86,18 @@ int main(int argc, char* argv[])
         int cmd_list_indx=0;
         //int retVal_Cmd_tmp=0;
         job bg_internal_job;
-        while (cmd_list_after_parse[cmd_list_indx].bg== ERROR){
-             cmd cmd_after_parse=cmd_list_after_parse[cmd_list_indx];
+        //printf("@@@@@@@ %d @@@@@@@@@\n",cmd_list_after_parse[cmd_list_indx].bg);
+        while (cmd_list_after_parse[cmd_list_indx].bg != ERROR){
 
+             cmd cmd_after_parse=cmd_list_after_parse[cmd_list_indx];
+        //    printf("cmd_after_parse.internal %d \n", cmd_after_parse.internal);
             if (cmd_after_parse.internal) { //internal
+         //       printf("we are internal\n");
                 if(cmd_after_parse.bg == 0 ){ //internal-fg
                     last_fg_cmd = cmd_after_parse;
+           //         printf("before selector\n");
                     int output = command_selector(cmd_after_parse);
+            //        printf("after selector\n");
                     if (output == QUITVAL ){
                         end_val= QUITVAL;
                         break; //we end the program

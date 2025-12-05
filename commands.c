@@ -88,21 +88,25 @@ int diff(cmd cmd_obj){
         if (bytes_read1 != bytes_read2) { //different sizes, so different ofc
             my_system_call(SYS_CLOSE, fd1);
             my_system_call(SYS_CLOSE, fd2);
+            printf("%d\n", DIFFERENT);
             return DIFFERENT;
         }
         if ( memcmp(buffer1, buffer2, bytes_read1) != IDENTICAL ) { //chunks are not identical
             my_system_call(SYS_CLOSE, fd1);
             my_system_call(SYS_CLOSE, fd2);
+            printf("%d\n", DIFFERENT);
             return DIFFERENT;
         }
         if ( ( ( bytes_read1 == EOF_READ ) && (bytes_read2 != EOF_READ ) ) || ( (bytes_read2 == EOF_READ) && (bytes_read1 != EOF_READ) ) ) { //ended reading one file but not the other.
             my_system_call(SYS_CLOSE, fd1);
             my_system_call(SYS_CLOSE, fd2);
+            printf("%d\n", DIFFERENT);
             return DIFFERENT;
         }
         if ( (bytes_read1 == EOF_READ ) && (bytes_read2 == EOF_READ) ) { //ended reading both files no errors so far
             my_system_call(SYS_CLOSE, fd1);
             my_system_call(SYS_CLOSE, fd2);
+            printf("%d\n", IDENTICAL);
             return IDENTICAL;
         }
 
@@ -219,16 +223,17 @@ int bg(cmd cmd_obj){
     // if alles gut
     printf("%s %d", jobs_list[job_idx_in_jobs].cmd, jobs_list[job_idx_in_jobs].PID);
     my_system_call(SYS_KILL,jobs_list[job_idx_in_jobs].PID,SIGCONT); //sending SIGCONT to the stopped job
-    jobs_list[job_idx_in_jobs].state =  JOB_STATE_BG;
+    jobs_list[job_idx_in_jobs].state = JOB_STATE_BG;
     return 0;
 }
 
 int quit(cmd cmd_obj){// kill the smash
+
     if (cmd_obj.nargs>1){
         perrorSmash("quit","expected 0 or 1 arguments");
         return ERROR;
     }
-    if ( strcmp(cmd_obj.args[1],"kill") == 0){   //kill jobs in order.
+    if ( cmd_obj.args[1] != NULL && strcmp(cmd_obj.args[1],"kill") == 0){   //kill jobs in order.
         for (int i = 0; i < JOBS_NUM_MAX; ++i) {
             if (jobs_list[i].PID == ERROR) continue;
             printf("[%d] %s - ",jobs_list[i].JOB_ID,jobs_list[i].cmd);
@@ -237,7 +242,6 @@ int quit(cmd cmd_obj){// kill the smash
             fflush(stdout);
             bool job_is_dead = false;
             for (int second = 0; second < 5 ; ++second) {
-
                 int still_alive = my_system_call(SYS_KILL,jobs_list[i].PID,0);
                 if (still_alive == ERROR){
                     //eliminated the process successfully :)
@@ -260,7 +264,7 @@ int quit(cmd cmd_obj){// kill the smash
             printf("\n");
         }
     }
-    else{
+    else if (cmd_obj.args[1] != NULL && strcmp(cmd_obj.args[1],"kill") !=0 ) {
         perrorSmash("quit","unexpected arguments");
         return ERROR;
     }
@@ -281,8 +285,7 @@ int showpid(cmd cmd_obj) {
 int pwd(cmd cmd_obj) {
     if (cmd_obj.nargs != 0) {
         perrorSmash("pwd","expected 0 arguments");
-        // fprintf(stderr, "smash error: pwd: expected 0 argument");
-        return -1;
+        return ERROR;
     }
     else {
 
@@ -305,9 +308,9 @@ int pwd(cmd cmd_obj) {
 }
 
 int my_kill(cmd cmd_obj) {
-	int signum = atoi(cmd_obj.args[1]);
-	int job_id = atoi(cmd_obj.args[2]);
-    if ( ( (cmd_obj.nargs ) != 2)  || ( ( atoi(cmd_obj.args[1]) )  < 1) || ( ( atoi(cmd_obj.args[1]) ) > 64) ) { // make sure signum is a valid signum (1<=args[1]<=64)
+	int signum =(cmd_obj.args[1]!=NULL) ? atoi(cmd_obj.args[1]) : -1;
+	int job_id = (cmd_obj.args[2]!=NULL) ? atoi(cmd_obj.args[2]) : -1 ;
+    if ( ( (cmd_obj.nargs ) != 2)  || ( signum < 1) || (( signum ) > 64) ) { // make sure signum is a valid signum (1<=args[1]<=64)
         perrorSmash("kill","invalid arguments");
 
         return ERROR;
@@ -523,8 +526,6 @@ int unalias(cmd cmd_obj) {
 }
 
 int command_selector(cmd cmd_after_parse){
-
-
     if ( strcmp(cmd_after_parse.cmd,cmd_DB[0] ) == 0 ){
          return showpid(cmd_after_parse);
     }
@@ -550,11 +551,13 @@ int command_selector(cmd cmd_after_parse){
         return 1;
     }
     else if ( strcmp(cmd_after_parse.cmd,cmd_DB[7] ) == 0 ) {
-         if( quit(cmd_after_parse) == QUITVAL) return QUITVAL ; //SIGNAL TO END the program
-        return 1;
+         if( quit(cmd_after_parse) == QUITVAL){
+             return QUITVAL ; //SIGNAL TO END the program
+         }
+         return 1;
     }
     else if ( strcmp(cmd_after_parse.cmd,cmd_DB[8]  ) == 0 ) {
-        //   diff();
+           diff(cmd_after_parse);
         return 1;
     }
     else if ( strcmp(cmd_after_parse.cmd,cmd_DB[9] ) == 0  ) {
@@ -592,8 +595,9 @@ cmd* parseCommandExample(char* line)
     strcpy(cmd_obj.cmd,strtok(line, delimiters));//read strtok documentation - parses string by delimiters
     if(strcmp(cmd_obj.cmd, "") == 0) return INVALID_COMMAND; //this means no tokens were found, most like since command is invalid
     cmd_obj.args[0] = cmd_obj.cmd; //first token before spaces/tabs/newlines should be command name
-    for(int i = 1; i < ARGS_NUM_MAX; i++)
-    {
+   // printf("@be FOR \n");
+    for(int i = 1; i < ARGS_NUM_MAX; i++){
+       // printf("@interation %d",i);
         cmd_obj.args[i] = strtok(NULL, delimiters); //first arg NULL -> keep tokenizing from previous call
         if(!cmd_obj.args[i])
             break;
@@ -602,11 +606,20 @@ cmd* parseCommandExample(char* line)
     /* TODO : REMOVE COMMENT */
 
         int num_cmd=0;
+        cmd_list[num_cmd]=cmd_obj; // 1 cmd only
+
+
+
+
+
+       //TODO PROBLEM
+     /*
         int start_of_cmd=0;
         int end_of_cmd=-1;
-        cmd_list[num_cmd]=cmd_obj; // 1 cmd only
+        int old_num_cmd;
         for (int i = 0; i < ARGS_NUM_MAX; ++i) {
-			int old_num_cmd = num_cmd;
+            printf("we die here %d",i );
+            old_num_cmd = num_cmd;
             if( strcmp(cmd_obj.args[i],"&&")  == 0 ){
                 cmd cmd_obj_tmp;
                 cmd_obj_tmp.bg=0;
@@ -651,35 +664,56 @@ cmd* parseCommandExample(char* line)
         }
 
 
+      TODO end PROBLEM  */
+
+
         for (int i=0 ; i<11 ; i++) {
-            if (!strcmp(cmd_DB[i], cmd_obj.cmd)){
+            if (strcmp(cmd_DB[i], cmd_obj.cmd) == 0){
                 cmd_obj.internal = 1;
+                break;
             }
         }
 
-        for (int i = 19 ; i>0 ; i--) {
-            if ( strcmp(cmd_obj.args[i],"&") == 0 ){
+        //TODO  not needed
+        //instead of this FOR LOOP, we will look for the last char and check if it is &!
+     /*   for (int i = 19 ; i>0 ; i--) {
+            if ( cmd_obj.args[i] != NULL && strcmp(cmd_obj.args[i],"&") == 0 ){
                 cmd_obj.bg = 1;
                 cmd_obj.nargs--;
             }
         }
+   */
 
-    /* TODO : REMOVE COMMENT */
-    /*
-    At this point cmd contains the command string and the args array contains
-    the arguments. You can return them via struct/class, for example in C:
-        typedef struct {
-            char* cmd;
-            char* args[MAX_ARGS];
-        } Command;
-    Or maybe something more like this:
-        typedef struct {
-            bool bg;
-            char** args;
-            int nargs;
-        } CmdArgs;
-    */
-    return cmd_list;
+     if (strcmp(cmd_obj.args[cmd_obj.nargs],"&")==0){
+         cmd_obj.bg = 1;
+         cmd_obj.nargs--;
+     }
+
+    // TODO : REMOVE COMMENT
+    cmd_list[num_cmd]=cmd_obj;
+
+/*
+    printf("@@@ cmd_obj @@@@\n");
+    for (int i = 0; i < cmd_obj.nargs+1; i++) {
+        printf("Arg %d: %s\n", i, cmd_obj.args[i]);
+    }
+    printf("cmd is: %s \n",cmd_obj.cmd);
+    printf("nargs: %d \n",cmd_obj.nargs);
+    printf("internal: %d \n",cmd_obj.internal);
+    printf("bg: %d \n",cmd_obj.bg);
+*/
+// PRINTS
+/*    for (int i = 0; i < cmd_obj.nargs+1; i++) {
+        printf("cmd list member #%d\n",i);
+        printf("cmd is: %s \n",cmd_list[i].cmd);
+        printf("nargs: %d \n",cmd_list[i].nargs);
+        printf("internal: %d \n",cmd_list[i].internal);
+        printf("bg: %d \n",cmd_list[i].bg);
+        for (int i = 0; i < cmd_obj.nargs+1; i++) {
+            printf("Arg %d: %s\n", i, cmd_obj.args[i]);
+        }
+    }
+  */      return cmd_list;
 }
 
 
