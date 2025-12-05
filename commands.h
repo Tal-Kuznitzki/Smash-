@@ -109,7 +109,7 @@ int bg(cmd cmd_obj);
 int quit(cmd cmd_obj);
 int showpid(cmd cmd_obj);
 int pwd(cmd cmd_obj);
-int kill(cmd cmd_obj);
+int my_kill(cmd cmd_obj);
 int cd (cmd cmd_obj);
 int jobs(cmd cmd_obj);
 
