@@ -561,11 +561,11 @@ int command_selector(cmd cmd_after_parse){
         return 1;
     }
     else if ( strcmp(cmd_after_parse.cmd,cmd_DB[9] ) == 0  ) {
-        //   alias();
+           alias(cmd_after_parse);
         return 1;
     }
     else if ( strcmp(cmd_after_parse.cmd,cmd_DB[10] ) == 0  ) {
-        //   unalias();
+         unalias(cmd_after_parse);
         return 1;
     }
 
@@ -683,9 +683,9 @@ cmd* parseCommandExample(char* line){
 
             // check if cmd is aliased - if there was alias, we will update the cmd_list here
             if (cmd_obj_tmp.internal == 0) {
-                printf("alias cehck \n");
                 list *current = head_alias_list;
                 while (current != NULL) {
+                    printf("insde\n");
                     if ((current->alias != NULL) && (strcmp(current->alias, cmd_obj_tmp.cmd) == 0)) {
                         int j = 0;
                         while (current->og_cmd_list[j].bg != ERROR) {
