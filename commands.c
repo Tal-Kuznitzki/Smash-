@@ -39,7 +39,7 @@
 #define JOB_STATE_FG 1
 #define JOB_STATE_BG 2
 #define JOB_STATE_STP 3
-const char* cmd_DB[11]= {"showpid","pwd","cd","jobs","kill","fg","bg","quit","diff","alias","unalias" } ;
+const char* cmd_DB[11]= {"showpid","pwd","cd","jobs","kill","fg","bg","quit","diff","alias","unalias"};
 char old_cd[CMD_LENGTH_MAX] = {0};
 char current_cd[CMD_LENGTH_MAX] = {0};
 cmd cmd_list[ARGS_NUM_MAX]= {0};
@@ -340,7 +340,7 @@ int cd (cmd cmd_obj) {
 		char* path = cmd_obj.args[1];
 
         if (strcmp(cmd_obj.args[1],"-") == 0){
-            if (old_cd == NULL) { //TODO we never get here?
+            if (strcmp(old_cd,"") == 0 )  {
                 perrorSmash("cd","old pwd not set");
                 return ERROR;
             }
@@ -354,11 +354,11 @@ int cd (cmd cmd_obj) {
             }
         }
         else if (strcmp(cmd_obj.args[1],"..") == 0 ) {
-            if (current_cd != NULL) {
+            if ( strcmp(current_cd, "") ) {
                 char delimiters = '/';
                 //char path_to_print [CMD_LENGTH_MAX] = {0};
                 char* last_dir = strrchr(current_cd, delimiters);
-                if (strcmp(last_dir, current_cd)){
+                if ( strcmp(last_dir, current_cd) == 0 ){
                     return 0; // do we need to add print of current dir?
                 }
                 else {
@@ -591,6 +591,9 @@ cmd* parseCommandExample(char* line)
     cmd_obj.bg = 0;
     cmd_obj.internal = 0;
     cmd_obj.nargs = 0;
+    for (int i = 0; i < ARGS_NUM_MAX; ++i) {
+        cmd_obj.args[i]=NULL;
+    }
     char* delimiters = " \t\n="; //parsing should be done by spaces, tabs or newlines
     strcpy(cmd_obj.cmd,strtok(line, delimiters));//read strtok documentation - parses string by delimiters
     if(strcmp(cmd_obj.cmd, "") == 0) return INVALID_COMMAND; //this means no tokens were found, most like since command is invalid
@@ -603,34 +606,35 @@ cmd* parseCommandExample(char* line)
             break;
         cmd_obj.nargs++;
     }
-    /* TODO : REMOVE COMMENT */
-
         int num_cmd=0;
         cmd_list[num_cmd]=cmd_obj; // 1 cmd only
-
-
-
-
-
        //TODO PROBLEM
-     /*
+
         int start_of_cmd=0;
         int end_of_cmd=-1;
         int old_num_cmd;
+        cmd cmd_obj_tmp;
+        strcpy(cmd_obj_tmp.cmd, "");
         for (int i = 0; i < ARGS_NUM_MAX; ++i) {
-            printf("we die here %d",i );
+            cmd_obj_tmp.args[i]=NULL;
+            }
+        for (int i = 0; i < ARGS_NUM_MAX; ++i) {
             old_num_cmd = num_cmd;
-            if( strcmp(cmd_obj.args[i],"&&")  == 0 ){
-                cmd cmd_obj_tmp;
+            //printf("@CMDOBJARG: %s\n",cmd_obj.args[i]);
+         if( ( cmd_obj.args[i]!=NULL ) && ( strcmp(cmd_obj.args[i],"&&")  == 0 ) ){
                 cmd_obj_tmp.bg=0;
                 end_of_cmd=i;
                 cmd_obj_tmp.nargs=end_of_cmd-start_of_cmd-1;
                 strcpy(cmd_obj_tmp.cmd,cmd_obj.args[start_of_cmd]);
+                printf("start_of_cmd is %d",start_of_cmd);
                 for (int k = i-1; k >= start_of_cmd ; k--) {
+                    printf("inside k loop %d\n",k);
+
                     strcpy(cmd_obj_tmp.args[k-start_of_cmd],cmd_obj.args[k]);
                 }
 
                 //start_of end of
+
                 for (int j=0 ; j<11 ; j++) {
                     if (!strcmp(cmd_DB[j], cmd_obj_tmp.cmd)){
                         cmd_obj_tmp.internal = 1;
@@ -639,9 +643,10 @@ cmd* parseCommandExample(char* line)
 
 			// check if cmd is aliased - if there was alias, we will update the cmd_list here
 				if (cmd_obj_tmp.internal == 0) {
+                    printf("alias cehck \n");
 					list* current = head_alias_list;
 		            while (current != NULL) {
-		                if ( strcmp(current->alias, cmd_obj_tmp.cmd) ) {
+		                if ( ( current->alias!=NULL) && (strcmp(current->alias, cmd_obj_tmp.cmd)==0 ) ) {
 							int j = 0;
 		                    while (current->og_cmd_list[j].bg != ERROR) {
 		                        cmd_list[num_cmd] = current->og_cmd_list[j];
@@ -653,38 +658,37 @@ cmd* parseCommandExample(char* line)
 		                current = current->next;
 		            }
 				}
+
 				
                 start_of_cmd=end_of_cmd+1;
 				// only if there wasnt alias
+                printf("@what is num cmd: %d \n",num_cmd);
 				if (old_num_cmd == num_cmd ) {
+                    printf("@@NUM_cmd IS %d\n",num_cmd);
 	                cmd_list[num_cmd]=cmd_obj_tmp;
 	                num_cmd++;
 				}
             }
-        }
 
 
-      TODO end PROBLEM  */
-
-
-        for (int i=0 ; i<11 ; i++) {
-            if (strcmp(cmd_DB[i], cmd_obj.cmd) == 0){
-                cmd_obj.internal = 1;
-                break;
+            for (int i=0 ; i<11 ; i++) {
+                if ( (cmd_obj.cmd!=NULL) && (strcmp(cmd_DB[i], cmd_obj.cmd) == 0) ){
+                    printf("@inside cmdobj %s %d \n",cmd_obj.cmd,i);
+                    cmd_obj.internal = 1;
+                    break;
+                }
             }
+
+
+
         }
 
-        //TODO  not needed
-        //instead of this FOR LOOP, we will look for the last char and check if it is &!
-     /*   for (int i = 19 ; i>0 ; i--) {
-            if ( cmd_obj.args[i] != NULL && strcmp(cmd_obj.args[i],"&") == 0 ){
-                cmd_obj.bg = 1;
-                cmd_obj.nargs--;
-            }
-        }
-   */
 
-     if (strcmp(cmd_obj.args[cmd_obj.nargs],"&")==0){
+       // TODO end PROBLEM  */
+
+       // printf("$$$$$$$$$$$$$$");
+
+     if ( cmd_obj.args[cmd_obj.nargs]!=NULL && strcmp(cmd_obj.args[cmd_obj.nargs],"&")==0 ){
          cmd_obj.bg = 1;
          cmd_obj.nargs--;
      }
