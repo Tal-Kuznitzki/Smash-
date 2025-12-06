@@ -607,7 +607,7 @@ cmd* parseCommandExample(char* line)
         cmd_obj.nargs++;
     }
         int num_cmd=0;
-        cmd_list[num_cmd]=cmd_obj; // 1 cmd only
+        //cmd_list[num_cmd]=cmd_obj; // 1 cmd only
        //TODO PROBLEM
 
         int start_of_cmd=0;
@@ -669,32 +669,44 @@ cmd* parseCommandExample(char* line)
 	                num_cmd++;
 				}
             }
-
-
-            for (int i=0 ; i<11 ; i++) {
-                if ( (cmd_obj.cmd!=NULL) && (strcmp(cmd_DB[i], cmd_obj.cmd) == 0) ){
-                    printf("@inside cmdobj %s %d \n",cmd_obj.cmd,i);
-                    cmd_obj.internal = 1;
-                    break;
-                }
-            }
-
-
-
-        }
-
+			else {
+				for (int i=0 ; i<11 ; i++) {
+	                if ( (cmd_obj.cmd!=NULL) && (strcmp(cmd_DB[i], cmd_obj.cmd) == 0) ){
+	                    printf("@inside cmdobj %s %d \n",cmd_obj.cmd,i);
+	                    cmd_obj.internal = 1;
+	                    break;
+	                }
+	            }
+				// check if cmd is aliased - if there was alias, we will update the cmd_list here
+				if (cmd_obj.internal == 0) {
+                    printf("alias cehck \n");
+					list* current = head_alias_list;
+		            while (current != NULL) {
+		                if ( ( current->alias!=NULL) && (strcmp(current->alias, cmd_obj.cmd)==0 ) ) {
+							int j = 0;
+		                    while (current->og_cmd_list[j].bg != ERROR) {
+		                        cmd_list[num_cmd] = current->og_cmd_list[j];
+		                        j++;
+								num_cmd++;
+								break;
+		                    }
+		                }
+		                current = current->next;
+		            }
+				}
 
        // TODO end PROBLEM  */
 
        // printf("$$$$$$$$$$$$$$");
-
-     if ( cmd_obj.args[cmd_obj.nargs]!=NULL && strcmp(cmd_obj.args[cmd_obj.nargs],"&")==0 ){
-         cmd_obj.bg = 1;
-         cmd_obj.nargs--;
-     }
-
-    // TODO : REMOVE COMMENT
-    cmd_list[num_cmd]=cmd_obj;
+		
+		     if ( cmd_obj.args[cmd_obj.nargs]!=NULL && strcmp(cmd_obj.args[cmd_obj.nargs],"&")==0 ){
+		         cmd_obj.bg = 1;
+		         cmd_obj.nargs--;
+		     }
+		
+		    // TODO : REMOVE COMMENT
+		    cmd_list[num_cmd]=cmd_obj;
+		}
 
 /*
     printf("@@@ cmd_obj @@@@\n");
@@ -719,6 +731,7 @@ cmd* parseCommandExample(char* line)
     }
   */      return cmd_list;
 }
+
 
 
 
