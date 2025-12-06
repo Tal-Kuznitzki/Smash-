@@ -1,12 +1,7 @@
 //commands.c
 
 #include "commands.h"
-#include "my_system_call.h"
-#include <errno.h>
-#include <string.h>
-#include <stdio.h>    
-#include <unistd.h>
-#include <stdbool.h>
+
 
 #define MAX_ERROR_LEN 30
 #define CMD_LENGTH_MAX 80

@@ -61,4 +61,34 @@ void sigintHandler(int sig){
 
     }
 
+
 }
+void sigchldHandler(int sig) {
+    int pid_val;
+    int status;
+    int options = 1;
+    // Use a loop to ensure ALL terminated children are reaped.
+    // The loop continues as long as the custom waitpid call successfully reaps a child (returns PID > 0).
+    while ( (pid_val = my_system_call(SYS_WAITPID, -1, &status, options)) > 0 ) {
+        // 1. Process the reaped child (Cleanup the jobs_list)
+        for (int i = 0; i < JOBS_NUM_MAX; i++) {
+            if (jobs_list[i].PID == pid_val) {
+                // Clear the job entry, marking the slot as available.
+                jobs_list[i].PID = ERROR; // Or another defined marker for 'empty'
+                // You might also want to set job_list[i].state = 0 or remove time/command info.
+                break;
+            }
+        }
+    }
+
+    // Check why the loop terminated.
+    // An exit value of -1 with errno == ECHILD is the normal, expected termination
+    // when all zombies are cleared.
+    if (pid_val == ERROR && errno != ECHILD) {
+        // Handle unexpected errors (using safe I/O if possible, or deferring).
+        // Since we are assuming a smash-like environment, a direct print to stderr
+        // might be acceptable, but is technically unsafe in a strict signal context.
+        printf("ERRORRR");
+    }
+}
+

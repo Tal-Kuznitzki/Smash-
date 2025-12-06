@@ -9,6 +9,10 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <stddef.h>
+#include <errno.h>
+#include "my_system_call.h"
+#include <string.h>
+#include <stdbool.h>
 
 #define CMD_LENGTH_MAX 80
 #define ARGS_NUM_MAX 20

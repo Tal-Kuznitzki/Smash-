@@ -29,7 +29,7 @@ int pid_to_sig;
 int job_id_to_sig;
 job job_to_be_stopped;
 void sigintHandler(int sig);
-
+void sigchldHandler(int sig);
 
 
 #endif //__SIGNALS_H__
