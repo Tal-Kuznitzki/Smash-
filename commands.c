@@ -419,6 +419,31 @@ int jobs(cmd cmd_obj){
 }
 
 int alias(cmd cmd_obj){
+	
+	// check if this word already exist - if yes - delete it from the list and create new one
+	list* current = head_alias_list;
+            while (current != NULL) {
+                if ( strcmp(current->alias, cmd_obj.args[1]) ) {
+                    if (current->prev == NULL) {
+                        // if current is head - update head
+                        head_alias_list = current->next;
+                    } else {
+                        // update the "next" ptr of the prev node
+                        current->prev->next = current->next;
+                    }
+
+                    if (current->next != NULL) {
+                        // in both cases update the next node's prev if it exists
+                        current->next->prev = current->prev;
+                    }
+
+                    // release memory
+                    free(current);
+                }
+
+                current = current->next;
+            }
+        
 
 		int num_cmd = 0;
 	 	int start_of_cmd=0;
@@ -762,6 +787,7 @@ cmd* parseCommandExample(char* line){
     }
   */      return cmd_list;
 }
+
 
 
 
