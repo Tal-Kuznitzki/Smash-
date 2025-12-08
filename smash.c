@@ -87,8 +87,8 @@ int main(int argc, char* argv[])
         //int retVal_Cmd_tmp=0;
         job bg_internal_job;
         //printf("@@@@@@@ %d @@@@@@@@@\n",cmd_list_after_parse[cmd_list_indx].bg);
-        while (cmd_list_after_parse[cmd_list_indx].bg != ERROR){
-             //printf("@@ bg val of cmd is : %d\n",cmd_list_after_parse[cmd_list_indx].bg);
+        while ( ( cmd_list_after_parse!=NULL )  && ( (cmd_list_after_parse[cmd_list_indx].args[0]!=NULL) && (cmd_list_after_parse[cmd_list_indx].bg != ERROR) )  ){
+             printf("@@ bg val of cmd is : %d\n",cmd_list_after_parse[cmd_list_indx].bg);
 
              cmd cmd_after_parse=cmd_list_after_parse[cmd_list_indx];
         //    printf("cmd_after_parse.internal %d \n", cmd_after_parse.internal);
