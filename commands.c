@@ -684,47 +684,47 @@ cmd* parseCommandExample(char* line){
                 }
             }
         }
-        if (num_cmd!=0){
-            cmd_obj_tmp.bg = 0;
-            end_of_cmd = cmd_obj.nargs + 1 ;
-            cmd_obj_tmp.nargs = end_of_cmd - start_of_cmd - 1;
-            strcpy(cmd_obj_tmp.cmd, cmd_obj.args[start_of_cmd]);
-            for (int k = cmd_obj.nargs ; k >= start_of_cmd; k--) {
-                cmd_obj_tmp.args[k - start_of_cmd]=cmd_obj.args[k];
-            }
+        // if (num_cmd!=0){
+        //     cmd_obj_tmp.bg = 0;
+        //     end_of_cmd = cmd_obj.nargs + 1 ;
+        //     cmd_obj_tmp.nargs = end_of_cmd - start_of_cmd - 1;
+        //     strcpy(cmd_obj_tmp.cmd, cmd_obj.args[start_of_cmd]);
+        //     for (int k = cmd_obj.nargs ; k >= start_of_cmd; k--) {
+        //         cmd_obj_tmp.args[k - start_of_cmd]=cmd_obj.args[k];
+        //     }
 
-            //start_of end of
+        //     //start_of end of
 
-            for (int j = 0; j < 11; j++) {
-                if (!strcmp(cmd_DB[j], cmd_obj_tmp.cmd)) {
-                    cmd_obj_tmp.internal = 1;
-                }
-            }
+        //     for (int j = 0; j < 11; j++) {
+        //         if (!strcmp(cmd_DB[j], cmd_obj_tmp.cmd)) {
+        //             cmd_obj_tmp.internal = 1;
+        //         }
+        //     }
 
-            // check if cmd is aliased - if there was alias, we will update the cmd_list here
-            if (cmd_obj_tmp.internal == 0) {
-                list *current = head_alias_list;
-                while (current != NULL) {
-                    printf("insde\n");
-                    if ((current->alias != NULL) && (strcmp(current->alias, cmd_obj_tmp.cmd) == 0)) {
-                        int j = 0;
-                        while (current->og_cmd_list[j].bg != ERROR) {
-                            cmd_list[num_cmd] = current->og_cmd_list[j];
-                            j++;
-                            num_cmd++;
-                            break;
-                        }
-                    }
-                    current = current->next;
-                }
-            }
-            start_of_cmd = end_of_cmd + 1;
-            // only if there wasnt alias
-            if (old_num_cmd == num_cmd) {
-                cmd_list[num_cmd] = cmd_obj_tmp;
-                num_cmd++;
-            }
-        }
+        //     // check if cmd is aliased - if there was alias, we will update the cmd_list here
+        //     if (cmd_obj_tmp.internal == 0) {
+        //         list *current = head_alias_list;
+        //         while (current != NULL) {
+        //             printf("insde\n");
+        //             if ((current->alias != NULL) && (strcmp(current->alias, cmd_obj_tmp.cmd) == 0)) {
+        //                 int j = 0;
+        //                 while (current->og_cmd_list[j].bg != ERROR) {
+        //                     cmd_list[num_cmd] = current->og_cmd_list[j];
+        //                     j++;
+        //                     num_cmd++;
+        //                     break;
+        //                 }
+        //             }
+        //             current = current->next;
+        //         }
+        //     }
+        //     start_of_cmd = end_of_cmd + 1;
+        //     // only if there wasnt alias
+        //     if (old_num_cmd == num_cmd) {
+        //         cmd_list[num_cmd] = cmd_obj_tmp;
+        //         num_cmd++;
+        //     }
+        // }
 
         if (num_cmd==0){
             for (int i = 0; i < 11; i++) {
@@ -787,6 +787,7 @@ cmd* parseCommandExample(char* line){
     }
   */      return cmd_list;
 }
+
 
 
 
