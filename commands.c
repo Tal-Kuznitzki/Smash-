@@ -756,6 +756,7 @@ cmd* parseCommandExample(char* line){
 
             if (cmd_obj.args[cmd_obj.nargs] != NULL && strcmp(cmd_obj.args[cmd_obj.nargs], "&") == 0) {
                 cmd_obj.bg = 1;
+                cmd_obj.args[cmd_obj.nargs]=NULL;
                 cmd_obj.nargs--;
             }
 
@@ -774,7 +775,7 @@ cmd* parseCommandExample(char* line){
     printf("bg: %d \n",cmd_obj.bg);
 */
 // PRINTS
-    for (int i = 0; i < ARGS_NUM_MAX; i++) {
+/*    for (int i = 0; i < ARGS_NUM_MAX; i++) {
         printf("cmd list member #%d\n",i);
         printf("cmd is: %s \n",cmd_list[i].cmd);
         printf("nargs: %d \n",cmd_list[i].nargs);
@@ -783,7 +784,7 @@ cmd* parseCommandExample(char* line){
         for (int J = 0; J < cmd_list[i].nargs+1; J++) {
             printf("Arg %d: %s\n", J, cmd_list[i].args[J]);
         }
-    }
+    }*/
        return cmd_list;
 }
 

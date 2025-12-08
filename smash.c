@@ -144,12 +144,12 @@ int main(int argc, char* argv[])
             {
                 if(cmd_after_parse.bg) // external-bg
                 {
-                    int pid_bg = my_system_call(1); // FORK
+                    int pid_bg = my_system_call(SYS_FORK); // FORK
                     if (pid_bg == 0 ) //if son - run_program in a new proc
                     {
                         setpgrp();
                         job bg_external_job;
-                        my_system_call(2,cmd_after_parse);
+                        my_system_call(SYS_EXECVP,cmd_after_parse.cmd,cmd_after_parse.args);
                         //TODO ERROR CHAINING TO OUTSIDE
                         current_job_index = (current_job_index>bg_external_job.JOB_ID) ? bg_external_job.JOB_ID : current_job_index ;
                         jobs_list[bg_external_job.JOB_ID].PID = ERROR ;
@@ -176,7 +176,7 @@ int main(int argc, char* argv[])
                     last_fg_cmd = cmd_after_parse;
                     if (pid_fg == 0 ) //if son - run_program in a new proc
                     {
-                        external_fg_end_val = my_system_call(SYS_EXECVP,cmd_after_parse);
+                        external_fg_end_val = my_system_call(SYS_EXECVP,cmd_after_parse.cmd,cmd_after_parse.args);
                         //TODO ERROR CHAINING TO OUTSIDE
                         if (external_fg_end_val == ERROR ) exit(ERROR);
                         exit(0);
