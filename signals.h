@@ -15,16 +15,16 @@
 * global functions
 =============================================================================*/
 
-/*
-struct sigaction
+
+/*struct sigaction
 {
     void (*sa_handler)(int);
     void (*sa_sigaction)(int, siginfo_t*, void*);
     sigset_t sa_mask;
     int sa_flags;
     void (*sa_restorer)(void);
-};
-*/
+};*/
+
 int pid_to_sig;
 int job_id_to_sig;
 job job_to_be_stopped;

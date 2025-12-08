@@ -47,7 +47,7 @@ int curr_fg_pid;
 
 
 
-int current_job_index=0; // TODO update accordingly
+// TODO update accordingly
 
 
 

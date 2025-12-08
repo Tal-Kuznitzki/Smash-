@@ -34,6 +34,7 @@ char _line[CMD_LENGTH_MAX];
 =============================================================================*/
 int main(int argc, char* argv[])
 {
+    int current_job_index=0;
     struct sigaction sa;
     memset(&sa, 0, sizeof(sa));
     sa.sa_handler = &sigintHandler ;
@@ -74,7 +75,7 @@ int main(int argc, char* argv[])
     last_fg_cmd.args[0]=NULL;
     strcpy(last_fg_cmd.cmd, "");
 
-     int end_val=0;
+    int end_val=0;
     int external_fg_end_val=0;
     smash_pid =  getpid();
     while(1) {

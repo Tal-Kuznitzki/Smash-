@@ -24,10 +24,13 @@ void sigintHandler(int sig){
             break;
         }
     }*/
-    pid_to_sig=job_to_fg_pid ;
-    if (sig==CTRLZ) {    // we got CTRLZ
-        perrorSmash("smash","caught CTRL+Z");
-        if (pid_to_sig>0){
+    pid_to_sig = (job_to_fg_pid==ERROR) ? smash_pid : job_to_fg_pid ;
+    if ( sig==CTRLZ && (pid_to_sig!=smash_pid) ) {    // we got CTRLZ
+        //perrorSmash("smash","caught CTRL+Z");
+        printf("smash: caught CTRL+Z");
+        if ( ( pid_to_sig>=0 )  ) {
+            printf("@PID TO SEND SIG TO: %d\n",pid_to_sig);
+            printf("@SIG TO SEND SIG TO: %d\n",sig);
             my_system_call(KILL,pid_to_sig,sig); // TODO add args
             if (current_job_index<JOBS_NUM_MAX){
                 strcpy(job_to_be_stopped.cmd,last_fg_cmd.cmd);
@@ -42,25 +45,26 @@ void sigintHandler(int sig){
             //TODO handle error!
             char msg[CMD_LENGTH_MAX];
             sprintf(msg,"process %d was stopped ",pid_to_sig);
-            perrorSmash("smash",msg);
+            printf("%s",msg);
         }
     }
     else if (sig==CTRLC){
-        perrorSmash("smash","caught CTRL+C");
+        printf("smash: caught CTRL+C");
         if (pid_to_sig>=0) {
-            my_system_call(SYS_KILL, pid_to_sig, SIGKILL);
             //current_job_index = (current_job_index>job_id_to_sig) ? job_id_to_sig : current_job_index ;
             // jobs_list[job_id_to_sig] = NULL;
             char msg[CMD_LENGTH_MAX];
             sprintf(msg,"process %d was killed ",pid_to_sig);
-            perrorSmash("smash",msg);
+            //perrorSmash("smash",msg);
+            printf("smash: %s",msg);
+            my_system_call(SYS_KILL, pid_to_sig, SIGKILL);
         }
         else{
             perrorSmash("smash","ctrl-C failed"); //TODO verify if need
         }
 
     }
-
+    return;
 
 }
 void sigchldHandler(int sig) {
@@ -90,5 +94,6 @@ void sigchldHandler(int sig) {
         // might be acceptable, but is technically unsafe in a strict signal context.
         printf("ERRORRR");
     }
+return;
 }
 
