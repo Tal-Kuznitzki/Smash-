@@ -195,7 +195,6 @@ int main(int argc, char* argv[])
                     {
                         setpgrp();
                         external_fg_end_val = my_system_call(SYS_EXECVP,cmd_after_parse.cmd,cmd_after_parse.args);
-                        //TODO ERROR CHAINING TO OUTSIDE
                         if (external_fg_end_val == ERROR ){
                             char msg[CMD_LENGTH_MAX];
                             if (errno == ENOENT ){ // if errno indicated cannot find program
