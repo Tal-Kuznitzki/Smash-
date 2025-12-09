@@ -613,7 +613,7 @@ cmd* parseCommandExample(char* line){
     for (int i = 0; i < ARGS_NUM_MAX; ++i) {
         cmd_obj.args[i]=NULL;
     }
-    char* delimiters = " \t\n="; //parsing should be done by spaces, tabs or newlines
+    char* delimiters = "\" \t\n="; //parsing should be done by spaces, tabs or newlines
     strcpy(cmd_obj.cmd,strtok(line, delimiters));//read strtok documentation - parses string by delimiters
     if(strcmp(cmd_obj.cmd, "") == 0) return INVALID_COMMAND; //this means no tokens were found, most like since command is invalid
     cmd_obj.args[0] = cmd_obj.cmd; //first token before spaces/tabs/newlines should be command name
@@ -670,8 +670,9 @@ cmd* parseCommandExample(char* line){
                                 cmd_list[num_cmd] = current->og_cmd_list[j];
                                 j++;
                                 num_cmd++;
-                                break;
+
                             }
+                            break;
                         }
                         current = current->next;
                     }
@@ -712,8 +713,8 @@ cmd* parseCommandExample(char* line){
                              cmd_list[num_cmd] = current->og_cmd_list[j];
                              j++;
                              num_cmd++;
-                             break;
                          }
+                         break;
                      }
                      current = current->next;
                  }
@@ -743,8 +744,8 @@ cmd* parseCommandExample(char* line){
                             cmd_list[num_cmd] = current->og_cmd_list[j];
                             j++;
                             num_cmd++;
-                            break;
                         }
+                        break;
                     }
                     current = current->next;
                 }
