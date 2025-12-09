@@ -471,38 +471,44 @@ int jobs(cmd cmd_obj){
 
 int alias(cmd cmd_obj){
 
-    // printf("cmd = %s, nargs = %d, bg = %d", cmd_obj.cmd, cmd_obj.nargs, cmd_obj.bg);
-    // for (int i = 0 ; i<ARGS_NUM_MAX ; i++){
-    //     if (cmd_obj.args[i] != NULL){
-    //         printf("args[%d] = %s", i, cmd_obj.args[i]);
-    //     }
-    // }
+   // printf("cmd = %s, nargs = %d, bg = %d", cmd_obj.cmd, cmd_obj.nargs, cmd_obj.bg);
+   // for (int i = 0 ; i<ARGS_NUM_MAX ; i++){
+   //     if (cmd_obj.args[i] != NULL){
+           // printf("args[%d] = %s", i, cmd_obj.args[i]);
+  //      }
+   // }
 
     // check if this word already exist - if yes - delete it from the list and create new one
     list* current_to_delete = head_alias_list;
     while (current_to_delete != NULL) {
-        if ( strcmp(current_to_delete->alias, cmd_obj.args[1]) ) {
-            if (current_to_delete->prev == NULL) {
-                // if current is head - update head
-                head_alias_list = current_to_delete->next;
-            } else {
-                // update the "next" ptr of the prev node
-                current_to_delete->prev->next = current_to_delete->next;
-            }
+        if (cmd_obj.args[1] != NULL){
+            if ( strcmp(current_to_delete->alias, cmd_obj.args[1]) ) {
+                if (current_to_delete->prev == NULL) {
+                    // if current is head - update head
+                    head_alias_list = current_to_delete->next;
+                } else {
+                    // update the "next" ptr of the prev node
+                    current_to_delete->prev->next = current_to_delete->next;
+                }
 
-            if (current_to_delete->next != NULL) {
-                // in both cases update the next node's prev if it exists
-                current_to_delete->next->prev = current_to_delete->prev;
-            }
+                if (current_to_delete->next != NULL) {
+                    // in both cases update the next node's prev if it exists
+                    current_to_delete->next->prev = current_to_delete->prev;
+                }
 
-            // release memory
-            free(current_to_delete);
-            break;
+                // release memory
+                free(current_to_delete);
+                break;
+            }
         }
+
 
         current_to_delete = current_to_delete->next;
     }
-    strcpy(cmd_obj.cmd, cmd_obj.args[2]);
+    if (cmd_obj.args[2] != NULL){
+        strcpy(cmd_obj.cmd, cmd_obj.args[2]);
+    }
+
     int num_cmd = 0;
     int start_of_cmd=2;
     int end_of_cmd=-1;
@@ -533,7 +539,7 @@ int alias(cmd cmd_obj){
                     //strcpy(cmd_obj_tmp.args[k-start_of_cmd],cmd_obj.args[k]);
                 }
 
-                //printf("%s", cmd_obj_tmp.args[k-start_of_cmd]);
+              //  printf("%s", cmd_obj_tmp.args[k-start_of_cmd]);
             }
 
             for (int i=0 ; i<11 ; i++) {
@@ -577,7 +583,7 @@ int alias(cmd cmd_obj){
 
     //if only one cmd
     if (num_cmd == 0) {
-
+        cmd_obj.internal=0;
         for (int i=0; i<(cmd_obj.nargs - 1); i++){
             cmd_obj.args[i] = cmd_obj.args[i+2];
         }
@@ -657,7 +663,6 @@ int unalias(cmd cmd_obj) {
     return ERROR;
 
 }
-
 int command_selector(cmd cmd_after_parse){
     if ( strcmp(cmd_after_parse.cmd,cmd_DB[0] ) == 0 ){
          return showpid(cmd_after_parse);
@@ -772,12 +777,12 @@ cmd* parseCommandExample(char* line){
                 build_cmd_full(&cmd_obj_tmp);
                 // check if cmd is aliased - if there was alias, we will update the cmd_list here
                 if (cmd_obj_tmp.internal == 0) {
-                    printf("alias cehck \n");
+                    //printf("alias cehck \n");
                     list *current = head_alias_list;
                     while (current != NULL) {
-                        if ((current->alias != NULL) && (strcmp(current->alias, cmd_obj_tmp.cmd) == 0)) {
+                        if ( (current->alias != NULL) && (strcmp(current->alias, cmd_obj_tmp.cmd) == 0)) {
                             int j = 0;
-                            while ( (current->og_cmd_list[j].bg != ERROR ) &&  (current->og_cmd_list[j].args[0]!=NULL)  ) {
+                            while ( (current->og_cmd_list[j].bg != ERROR ) && (current->og_cmd_list[j].args[0]!=NULL)  ) {
                                 cmd_list[num_cmd] = current->og_cmd_list[j];
                                 j++;
                                 num_cmd++;
@@ -798,6 +803,7 @@ cmd* parseCommandExample(char* line){
         }
          if (num_cmd!=0){
              cmd_obj_tmp.bg = 0;
+             cmd_obj_tmp.internal=0;
              end_of_cmd = cmd_obj.nargs + 1 ;
              cmd_obj_tmp.nargs = end_of_cmd - start_of_cmd - 1;
              strcpy(cmd_obj_tmp.cmd, cmd_obj.args[start_of_cmd]);
@@ -809,21 +815,22 @@ cmd* parseCommandExample(char* line){
 
              for (int j = 0; j < 11; j++) {
                  if (strcmp(cmd_DB[j], cmd_obj_tmp.cmd) == 0) {
-                     printf("@ me thinkj %s is internal\n",cmd_obj_tmp.cmd);
+                 //    printf("@ me thinkj %s is internal\n",cmd_obj_tmp.cmd);
                      cmd_obj_tmp.internal = 1;
                      break;
                  }
              }
+             //printf("@we here\n");
              build_cmd_full(&cmd_obj_tmp);
 
              // check if cmd is aliased - if there was alias, we will update the cmd_list here
              if (cmd_obj_tmp.internal == 0) {
                  list *current = head_alias_list;
                  while (current != NULL) {
-                     printf("insde\n");
+                     //printf("insde\n");
                      if ((current->alias != NULL) && (strcmp(current->alias, cmd_obj_tmp.cmd) == 0)) {
                          int j = 0;
-                         while (current->og_cmd_list[j].bg != ERROR) {
+                         while ( (current->og_cmd_list[j].bg != ERROR) && (current->og_cmd_list[j].args[0])!=NULL) {
                              cmd_list[num_cmd] = current->og_cmd_list[j];
                              j++;
                              num_cmd++;
@@ -849,12 +856,12 @@ cmd* parseCommandExample(char* line){
             }
             // check if cmd is aliased - if there was alias, we will update the cmd_list here
             if (cmd_obj.internal == 0) {
-                printf("alias cehck \n");
                 list *current = head_alias_list;
                 while (current != NULL) {
+                    //printf("%d",);
                     if ((current->alias != NULL) && (strcmp(current->alias, cmd_obj.cmd) == 0)) {
                         int j = 0;
-                        while (current->og_cmd_list[j].bg != ERROR) {
+                        while (current->og_cmd_list[j].bg != ERROR && (current->og_cmd_list[j].args[0]!=NULL) ) {
                             cmd_list[num_cmd] = current->og_cmd_list[j];
                             j++;
                             num_cmd++;
