@@ -154,8 +154,19 @@ int main(int argc, char* argv[])
                     {
                         setpgrp();
                         job bg_external_job;
-                        my_system_call(SYS_EXECVP,cmd_after_parse.cmd,cmd_after_parse.args);
-                        //TODO ERROR CHAINING TO OUTSIDE
+                        int external_bg_end_val = my_system_call(SYS_EXECVP,cmd_after_parse.cmd,cmd_after_parse.args);
+                        if (external_bg_end_val == ERROR ){
+                            char msg[CMD_LENGTH_MAX];
+                            if (errno == ENOENT ){ // if errno indicated cannot find program
+                                sprintf(msg,"cannot find program");
+                            }
+                            else {
+                                sprintf(msg,"invalid command");
+                            }
+                            perrorSmash(" external",msg);
+                            exit(ERROR);
+                        }
+
                         current_job_index = (current_job_index>bg_external_job.JOB_ID) ? bg_external_job.JOB_ID : current_job_index ;
                         jobs_list[bg_external_job.JOB_ID].PID = ERROR ;
                         exit(0);
