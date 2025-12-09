@@ -173,7 +173,7 @@ int bg(cmd cmd_obj){
         perrorSmash("bg","invalid arguments");
         return ERROR;
     }
-    int job_idx_in_jobs = -1;
+    int job_idx_in_jobs = 0;
     if (job_id == NOARGSVAL ){
         int maxId = jobs_list[0].JOB_ID;
         for (int i = 1; i < JOBS_NUM_MAX; i++) {
@@ -501,8 +501,8 @@ int alias(cmd cmd_obj){
 
              start_of_cmd = end_of_cmd + 1;
              // only if there wasnt alias
-             if (old_num_cmd == num_cmd) {
-                 new_node->og_cmd_list[num_cmd] = cmd_obj_tmp;
+            // if (old_num_cmd == num_cmd) { TODO MAYA LOOK HERE WHERE SHOULD OLD_NUM_CMD BE DEFINEDD
+            if(1){   new_node->og_cmd_list[num_cmd] = cmd_obj_tmp;
                  num_cmd++;
              }
          }
@@ -510,11 +510,11 @@ int alias(cmd cmd_obj){
         //if only one cmd
         if (num_cmd == 0) {
 
-            for (int i=0; i<(cmd_obj.nagrs - 2); i++){
+            for (int i=0; i<(cmd_obj.nargs - 2); i++){
                 cmd_obj.args[i] = cmd_obj.args[i+2];
             }
             
-            for (int i=(cmd_obj.nagrs - 1); i<ARGS_NUM_MAX; i++){
+            for (int i=(cmd_obj.nargs - 1); i<ARGS_NUM_MAX; i++){
                 cmd_obj.args[i] = NULL; // maybe should be 0?
             }
             cmd_obj.nargs = cmd_obj.nargs - 2;
@@ -815,7 +815,7 @@ cmd* parseCommandExample(char* line){
     printf("bg: %d \n",cmd_obj.bg);
 */
 // PRINTS
-/*    for (int i = 0; i < ARGS_NUM_MAX; i++) {
+    for (int i = 0; i < ARGS_NUM_MAX; i++) {
         printf("cmd list member #%d\n",i);
         printf("cmd is: %s \n",cmd_list[i].cmd);
         printf("nargs: %d \n",cmd_list[i].nargs);
@@ -824,7 +824,7 @@ cmd* parseCommandExample(char* line){
         for (int J = 0; J < cmd_list[i].nargs+1; J++) {
             printf("Arg %d: %s\n", J, cmd_list[i].args[J]);
         }
-    }*/
+    }
        return cmd_list;
 }
 
