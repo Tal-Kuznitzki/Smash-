@@ -81,9 +81,9 @@ int main(int argc, char* argv[])
     smash_pid =  getpid();
     while(1) {
         printf("smash > ");
-         if (fgets(_line, CMD_LENGTH_MAX, stdin)==NULL ){
-             break;
-         }
+        if (fgets(_line, CMD_LENGTH_MAX, stdin)==NULL ){
+            break;
+        }
         strcpy(_cmd, _line);
         //execute command
         cmd* cmd_list_after_parse = parseCommandExample(_cmd);
@@ -94,15 +94,15 @@ int main(int argc, char* argv[])
         while ( ( cmd_list_after_parse!=NULL )  && ( (cmd_list_after_parse[cmd_list_indx].args[0]!=NULL) && (cmd_list_after_parse[cmd_list_indx].bg != ERROR) )  ){
             // printf("@@ bg val of cmd is : %d\n",cmd_list_after_parse[cmd_list_indx].bg);
 
-             cmd cmd_after_parse=cmd_list_after_parse[cmd_list_indx];
-        //    printf("cmd_after_parse.internal %d \n", cmd_after_parse.internal);
+            cmd cmd_after_parse=cmd_list_after_parse[cmd_list_indx];
+            //    printf("cmd_after_parse.internal %d \n", cmd_after_parse.internal);
             if (cmd_after_parse.internal) { //internal
-         //       printf("we are internal\n");
+                //       printf("we are internal\n");
                 if(cmd_after_parse.bg == 0 ){ //internal-fg
                     last_fg_cmd = cmd_after_parse;
-           //         printf("before selector\n");
+                    //         printf("before selector\n");
                     int output = command_selector(cmd_after_parse);
-            //        printf("after selector\n");
+                    //        printf("after selector\n");
                     if (output == QUITVAL ){
                         end_val= QUITVAL;
                         break; //we end the program
@@ -185,7 +185,16 @@ int main(int argc, char* argv[])
                         setpgrp();
                         external_fg_end_val = my_system_call(SYS_EXECVP,cmd_after_parse.cmd,cmd_after_parse.args);
                         //TODO ERROR CHAINING TO OUTSIDE
-                        if (external_fg_end_val == ERROR ) exit(ERROR);
+                        if (external_fg_end_val == ERROR ){
+                            char msg[CMD_LENGTH_MAX];
+                            if (errno == ENOENT ){ // if errno indicated cannot find program
+                                sprintf(msg,"cannot find program");
+                            }
+                            else {
+                                sprintf(msg,"invalid command");
+                            }
+                            perrorSmash(" external",msg);
+                        }
                         exit(0);
                     }
                     else // if father process
