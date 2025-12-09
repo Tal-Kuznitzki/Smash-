@@ -120,12 +120,11 @@ int pwd(cmd cmd_obj);
 int my_kill(cmd cmd_obj);
 int cd (cmd cmd_obj);
 int jobs(cmd cmd_obj);
-
+void remove_finished_jobs();
 int job_to_fg_pid;
 cmd last_fg_cmd;
 
 job jobs_list[JOBS_NUM_MAX];
-int current_job_index;
 cmd cmd_list[ARGS_NUM_MAX];
 job job_to_be_stopped;
 list* head_alias_list;

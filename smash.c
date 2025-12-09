@@ -35,7 +35,6 @@ char _line[CMD_LENGTH_MAX];
 =============================================================================*/
 int main(int argc, char* argv[])
 {
-    int current_job_index=0;
     struct sigaction sa;
     memset(&sa, 0, sizeof(sa));
     sa.sa_handler = &sigintHandler ;
@@ -80,6 +79,7 @@ int main(int argc, char* argv[])
     int external_fg_end_val=0;
     smash_pid =  getpid();
     while(1) {
+        remove_finished_jobs();
         printf("smash > ");
         if (fgets(_line, CMD_LENGTH_MAX, stdin)==NULL ){
             break;
@@ -126,21 +126,31 @@ int main(int argc, char* argv[])
                         } else if ( output == ERROR  ){
                             break;
                         }
-                        current_job_index = (current_job_index>bg_internal_job.JOB_ID) ? bg_internal_job.JOB_ID : current_job_index ;
+                        //current_job_index = (current_job_index>bg_internal_job.JOB_ID) ? bg_internal_job.JOB_ID : current_job_index ;
                         jobs_list[bg_internal_job.JOB_ID].PID = ERROR ;
                     }
                     else { //father process
-                        bg_internal_job.JOB_ID = current_job_index ;
-                        current_job_index++;
-                        smash_pid = pid_internal_bg;
-                        bg_internal_job.PID = pid_internal_bg;
-                        strcpy(bg_internal_job.cmd,cmd_after_parse.cmd);
-                        strcpy(bg_internal_job.cmd_full, cmd_after_parse.cmd_full);
-                        bg_internal_job.state = JOB_STATE_BG ;
-                        jobs_list[bg_internal_job.JOB_ID]= bg_internal_job ;
-                        time(&(bg_internal_job.time)) ;
+                        int job_id = ERROR;
+                        for(int i = 0; i < JOBS_NUM_MAX; i++) {
+                            if (jobs_list[i].PID == ERROR) {
+                                job_id = i;
+                                break;
+                            }
+                        }
+                        if (job_id!=ERROR){
+                            bg_internal_job.JOB_ID = job_id;
+                            // Note: Removed current_job_index++
 
+                            smash_pid = pid_internal_bg;
+                            bg_internal_job.PID = pid_internal_bg;
+                            strcpy(bg_internal_job.cmd, cmd_after_parse.cmd);
+                            strcpy(bg_internal_job.cmd_full, cmd_after_parse.cmd_full);
+                            bg_internal_job.state = JOB_STATE_BG;
 
+                            // Remember the time fix from before!
+                            bg_internal_job.time = time(NULL);
+                            jobs_list[job_id] = bg_internal_job;
+                        }
                     }
 
                 }
@@ -167,22 +177,32 @@ int main(int argc, char* argv[])
                             exit(ERROR);
                         }
 
-                        current_job_index = (current_job_index>bg_external_job.JOB_ID) ? bg_external_job.JOB_ID : current_job_index ;
+                        //current_job_index = (current_job_index>bg_external_job.JOB_ID) ? bg_external_job.JOB_ID : current_job_index ;
                         jobs_list[bg_external_job.JOB_ID].PID = ERROR ;
                         exit(0);
                     }
                     else // if father process
                     {
-                        job bg_external_job;
-                        bg_external_job.JOB_ID = current_job_index ;
-                        current_job_index++;
-                        bg_external_job.PID = pid_bg;
-                        strcpy(bg_external_job.cmd,cmd_after_parse.cmd);
-                        strcpy(bg_external_job.cmd_full, cmd_after_parse.cmd_full);
-                        bg_external_job.state = JOB_STATE_BG ;
+                        int job_id = -1;
+                        for(int i = 0; i < JOBS_NUM_MAX; i++) {
+                            if (jobs_list[i].PID == ERROR) {
+                                job_id = i;
+                                break;
+                            }
+                        }
+                        if (job_id!=ERROR){
+                            job bg_external_job;
+                            bg_external_job.JOB_ID = job_id ;
 
-                        jobs_list[bg_external_job.JOB_ID]= bg_external_job ;
-                        time(&(bg_internal_job.time)) ;
+                            bg_external_job.PID = pid_bg;
+                            strcpy(bg_external_job.cmd,cmd_after_parse.cmd);
+                            strcpy(bg_external_job.cmd_full, cmd_after_parse.cmd_full);
+                            bg_external_job.state = JOB_STATE_BG ;
+                            bg_external_job.time = time(NULL);
+                            jobs_list[bg_external_job.JOB_ID]= bg_external_job ;
+                        }
+
+
 
                     }
                 }
@@ -233,7 +253,6 @@ int main(int argc, char* argv[])
                                 // The job is now in the jobs list (if the signal handler successfully updated it).
                                 // Since the signal handler is unsafe, you might need to check the job list here.
                                 // It's safer to have the signal handler *only* set a volatile flag.
-
                             }
                                 // 2. Check if the process terminated (equivalent to WIFEXITED or WIFSIGNALED)
                             else if ((wait_status & 0x7f) == 0) {

@@ -33,16 +33,27 @@ void sigintHandler(int sig){
         if ( ( pid_to_sig>=0 )  ) {
             printf("@PID TO SEND SIG TO: %d\n",pid_to_sig);
             printf("@SIG TO SEND SIG TO: %d\n",sig);
-            my_system_call(KILL,pid_to_sig,sig); // TODO add args
-            if (current_job_index<JOBS_NUM_MAX){
+
+
+            my_system_call(KILL,pid_to_sig,sig);
+
+            int job_id = ERROR;
+            for(int i = 0; i < JOBS_NUM_MAX; i++) {
+                if (jobs_list[i].PID == ERROR) { // Found empty slot
+                    job_id = i;
+                    break;
+                }
+            }
+
+            if (job_id<JOBS_NUM_MAX && job_id!= ERROR ){
                 strcpy(job_to_be_stopped.cmd,last_fg_cmd.cmd);
                 strcpy(job_to_be_stopped.cmd_full, last_fg_cmd.cmd_full);
                 job_to_be_stopped.PID = pid_to_sig;
-                job_to_be_stopped.JOB_ID = current_job_index;
+                job_to_be_stopped.JOB_ID = job_id;
                 job_to_be_stopped.state = JOB_STATE_STP;
                 job_to_be_stopped.time = time(NULL);
-                jobs_list[current_job_index] = job_to_be_stopped;
-                current_job_index++;
+                jobs_list[job_id] = job_to_be_stopped;
+                //current_job_index++;
             }
             jobs_list[job_id_to_sig].state=JOB_STATE_STP ;
             //TODO handle error!
