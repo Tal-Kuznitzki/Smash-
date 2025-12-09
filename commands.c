@@ -381,9 +381,9 @@ int cd (cmd cmd_obj) {
         return ERROR;
     }
     else {
-		getcwd(current_cd, CMD_LENGTH_MAX);
-		char temp[CMD_LENGTH_MAX];
-		char* path = cmd_obj.args[1];
+        getcwd(current_cd, CMD_LENGTH_MAX);
+        char temp[CMD_LENGTH_MAX];
+        char* path = cmd_obj.args[1];
 
         if (strcmp(cmd_obj.args[1],"-") == 0){
             if (strcmp(old_cd,"") == 0 )  {
@@ -391,11 +391,11 @@ int cd (cmd cmd_obj) {
                 return ERROR;
             }
             else {
-				chdir(old_cd);
-				printf("%s \n", old_cd);
-				strcpy(temp, old_cd);
-				strcpy(old_cd, current_cd);
-				strcpy(current_cd, temp);
+                chdir(old_cd);
+                printf("%s \n", old_cd);
+                strcpy(temp, old_cd);
+                strcpy(old_cd, current_cd);
+                strcpy(current_cd, temp);
                 return 0;
             }
         }
@@ -405,13 +405,18 @@ int cd (cmd cmd_obj) {
                 //char path_to_print [CMD_LENGTH_MAX] = {0};
                 char* last_dir = strrchr(current_cd, delimiters);
                 if ( strcmp(last_dir, current_cd) == 0 ){
+                    if (strlen(current_cd) > 1) {
+                        *(current_cd+1) = '\0';
+                        chdir(current_cd);
+                        printf("pwd\n%s \n", current_cd);
+                    }
                     return 0; // do we need to add print of current dir?
                 }
                 else {
-					strcpy(old_cd, current_cd); //the full og path - will be noe old_cd
+                    strcpy(old_cd, current_cd); //the full og path - will be noe old_cd
                     *last_dir = '\0'; //cut the last part, also update current_cd
-					chdir(current_cd); //move to home dir
-                    printf("pwd\n%s \n", current_cd); 
+                    chdir(current_cd); //move to home dir
+                    printf("pwd\n%s \n", current_cd);
                     return 0;
                 }
 
@@ -424,20 +429,20 @@ int cd (cmd cmd_obj) {
                 if (errno == ENOENT){ //if directory doesnt exist
                     perrorSmash("cd","target directory does not exist");
                 }
-				else if (errno == ENOTDIR) { //if path is of a file
-					char error_msg[MAX_ERROR_LEN + CMD_LENGTH_MAX];
-					snprintf(error_msg, MAX_ERROR_LEN + CMD_LENGTH_MAX, "%s: not a directory", path);
+                else if (errno == ENOTDIR) { //if path is of a file
+                    char error_msg[MAX_ERROR_LEN + CMD_LENGTH_MAX];
+                    snprintf(error_msg, MAX_ERROR_LEN + CMD_LENGTH_MAX, "%s: not a directory", path);
 
-					perrorSmash("cd",error_msg);
+                    perrorSmash("cd",error_msg);
                     return  ERROR;
 
-				}
+                }
             }
             else {
-				chdir(path);
+                chdir(path);
                 printf("pwd\n%s\n", path);
-				strcpy(old_cd, current_cd);
-				strcpy(current_cd, path);
+                strcpy(old_cd, current_cd);
+                strcpy(current_cd, path);
                 return 0;
             }
 
@@ -446,7 +451,6 @@ int cd (cmd cmd_obj) {
     }
     return 0;
 }
-
 int jobs(cmd cmd_obj){
     if (cmd_obj.nargs != 0){
         perrorSmash("jobs","expected 0 arguments");
@@ -479,10 +483,12 @@ int alias(cmd cmd_obj){
    // }
 
     // check if this word already exist - if yes - delete it from the list and create new one
+
     list* current_to_delete = head_alias_list;
     while (current_to_delete != NULL) {
         if (cmd_obj.args[1] != NULL){
-            if ( strcmp(current_to_delete->alias, cmd_obj.args[1]) ) {
+            if ( strcmp(current_to_delete->alias, cmd_obj.args[1]) == 0 ) {
+
                 if (current_to_delete->prev == NULL) {
                     // if current is head - update head
                     head_alias_list = current_to_delete->next;
@@ -497,6 +503,17 @@ int alias(cmd cmd_obj){
                 }
 
                 // release memory
+                for (int i = 0; i < ARGS_NUM_MAX; i++) {
+                    // Check if command exists
+                    if (current_to_delete->og_cmd_list[i].cmd[0] != '\0') {
+                        for (int j = 0; j < ARGS_NUM_MAX; j++) {
+                            if (current_to_delete->og_cmd_list[i].args[j] != NULL) {
+                                free(current_to_delete->og_cmd_list[i].args[j]);
+                                current_to_delete->og_cmd_list[i].args[j] = NULL;
+                            }
+                        }
+                    }
+                }
                 free(current_to_delete);
                 break;
             }
@@ -505,7 +522,8 @@ int alias(cmd cmd_obj){
 
         current_to_delete = current_to_delete->next;
     }
-    if (cmd_obj.args[2] != NULL){
+    if (cmd_obj.args[2] != NULL){ // alias a="echo cat"
+        //                             0   1    2   3
         strcpy(cmd_obj.cmd, cmd_obj.args[2]);
     }
 
@@ -533,9 +551,15 @@ int alias(cmd cmd_obj){
                 strcpy(cmd_obj_tmp.cmd,cmd_obj.args[start_of_cmd]);
             }
             for (int k = i-1; k >= start_of_cmd ; k--) {
-                if (strcmp(cmd_obj.args[k], "")!=0) {
+                if (cmd_obj.args[k] != NULL && strcmp(cmd_obj.args[k], "")!=0){
                     //printf("inside if, k-start = %d\n", k-start_of_cmd);
-                    cmd_obj_tmp.args[k-start_of_cmd] = cmd_obj.args[k];
+                    char *dup = malloc(strlen(cmd_obj.args[k]) + 1);
+                    if (dup) {
+                        strcpy(dup, cmd_obj.args[k]);
+                        cmd_obj_tmp.args[k-start_of_cmd] = dup;
+                    }
+                    else{ return ERROR;
+                    }
                     //strcpy(cmd_obj_tmp.args[k-start_of_cmd],cmd_obj.args[k]);
                 }
 
@@ -564,7 +588,18 @@ int alias(cmd cmd_obj){
         cmd_obj_tmp.nargs = end_of_cmd - start_of_cmd - 1;
         strcpy(cmd_obj_tmp.cmd, cmd_obj.args[start_of_cmd]);
         for (int k = cmd_obj.nargs ; k >= start_of_cmd; k--) {
-            cmd_obj_tmp.args[k - start_of_cmd]=cmd_obj.args[k];
+            if (cmd_obj.args[k]) {
+                // === DEEP COPY FIX ===
+                char *dup = malloc(strlen(cmd_obj.args[k]) + 1);
+                if (dup) {
+                    strcpy(dup, cmd_obj.args[k]);
+                    cmd_obj_tmp.args[k - start_of_cmd] = dup;
+                }
+                else {
+                    return ERROR;
+                }
+                // =====================
+            }
         }
 
         for (int j = 0; j < 11; j++) {
@@ -586,6 +621,7 @@ int alias(cmd cmd_obj){
         cmd_obj.internal=0;
         for (int i=0; i<(cmd_obj.nargs - 1); i++){
             cmd_obj.args[i] = cmd_obj.args[i+2];
+            printf("@@cmd_obj_arg %s\n",cmd_obj.args[i]);
         }
 
         for (int i=(cmd_obj.nargs - 1); i<ARGS_NUM_MAX; i++){
@@ -607,7 +643,19 @@ int alias(cmd cmd_obj){
         // }
 
         new_node->og_cmd_list[num_cmd]=cmd_obj; // 1 cmd only
-
+        for (int i = 0; i <= cmd_obj.nargs; i++) {
+            if (new_node->og_cmd_list[num_cmd].args[i] != NULL) {
+                char *ptr = new_node->og_cmd_list[num_cmd].args[i];
+                char *dup = malloc(strlen(ptr) + 1);
+                if (dup) {
+                    strcpy(dup, ptr);
+                    new_node->og_cmd_list[num_cmd].args[i] = dup;
+                }
+                else {
+                    return ERROR;
+                }
+            }
+        }
     }
     // update ptrs
     new_node->next = head_alias_list;
@@ -652,6 +700,17 @@ int unalias(cmd cmd_obj) {
                 }
 
                 // release memory
+                for (int i = 0; i < ARGS_NUM_MAX; i++) {
+                    // Check if command exists
+                    if (current->og_cmd_list[i].cmd[0] != '\0') {
+                        for (int j = 0; j < ARGS_NUM_MAX; j++) {
+                            if (current->og_cmd_list[i].args[j] != NULL) {
+                                free(current->og_cmd_list[i].args[j]);
+                                current->og_cmd_list[i].args[j] = NULL;
+                            }
+                        }
+                    }
+                }
                 free(current);
                 return 0;
             }
@@ -732,7 +791,10 @@ cmd* parseCommandExample(char* line){
         cmd_obj.args[i]=NULL;
     }
     char* delimiters = "\" \t\n="; //parsing should be done by spaces, tabs or newlines
-    strcpy(cmd_obj.cmd,strtok(line, delimiters));//read strtok documentation - parses string by delimiters
+
+    char* first_token = strtok(line, delimiters);
+    if (first_token==NULL) return NULL;
+    strcpy(cmd_obj.cmd,first_token);//read strtok documentation - parses string by delimiters
     if(strcmp(cmd_obj.cmd, "") == 0) return INVALID_COMMAND; //this means no tokens were found, most like since command is invalid
     cmd_obj.args[0] = cmd_obj.cmd; //first token before spaces/tabs/newlines should be command name
    // printf("@be FOR \n");

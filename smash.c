@@ -81,7 +81,9 @@ int main(int argc, char* argv[])
     smash_pid =  getpid();
     while(1) {
         printf("smash > ");
-        fgets(_line, CMD_LENGTH_MAX, stdin);
+         if (fgets(_line, CMD_LENGTH_MAX, stdin)==NULL ){
+             break;
+         }
         strcpy(_cmd, _line);
         //execute command
         cmd* cmd_list_after_parse = parseCommandExample(_cmd);
