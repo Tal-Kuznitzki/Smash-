@@ -120,7 +120,7 @@ int fg(cmd cmd_obj) {
     else if (cmd_obj.nargs == 1){
         job_id = atoi(cmd_obj.args[1]);
     }
-    int job_idx_in_jobs = -1;
+    int job_idx_in_jobs = 0;
     if (job_id == NOARGSVAL ) { //if no job_id, two options, either take the maximal job_id,
         int job_id = jobs_list[0].JOB_ID;
         if (jobs_list[0].PID == ERROR) {
@@ -421,32 +421,33 @@ int jobs(cmd cmd_obj){
 int alias(cmd cmd_obj){
 	
 	// check if this word already exist - if yes - delete it from the list and create new one
-	list* current = head_alias_list;
-            while (current != NULL) {
-                if ( strcmp(current->alias, cmd_obj.args[1]) ) {
-                    if (current->prev == NULL) {
+	list* current_to_delete = head_alias_list;
+            while (current_to_delete != NULL) {
+                if ( strcmp(current_to_delete->alias, cmd_obj.args[1]) ) {
+                    if (current_to_delete->prev == NULL) {
                         // if current is head - update head
-                        head_alias_list = current->next;
+                        head_alias_list = current_to_delete->next;
                     } else {
                         // update the "next" ptr of the prev node
-                        current->prev->next = current->next;
+                        current_to_delete->prev->next = current_to_delete->next;
                     }
 
-                    if (current->next != NULL) {
+                    if (current_to_delete->next != NULL) {
                         // in both cases update the next node's prev if it exists
-                        current->next->prev = current->prev;
+                        current_to_delete->next->prev = current_to_delete->prev;
                     }
 
                     // release memory
-                    free(current);
+                    free(current_to_delete);
+                    break;
                 }
 
-                current = current->next;
+                current_to_delete = current_to_delete->next;
             }
         
-
+        strcpy(cmd_obj.cmd, cmd_obj.args[1]);
 		int num_cmd = 0;
-	 	int start_of_cmd=0;
+	 	int start_of_cmd=2;
         int end_of_cmd=-1;
         list* new_node = (list*)malloc(sizeof(list));
         if (new_node == NULL) {
@@ -457,11 +458,13 @@ int alias(cmd cmd_obj){
         memset(new_node->alias, 0, sizeof(new_node->alias));
         strcpy(new_node->alias, cmd_obj.args[1]);
 
-        new_node->og_cmd_list[num_cmd]=cmd_obj; // 1 cmd only
+        cmd cmd_obj_tmp;
+        cmd_obj_tmp.bg=0;
+        cmd_obj_tmp.internal = 0;
+
         for (int i = 2; i < ARGS_NUM_MAX; ++i) {
             if( strcmp(cmd_obj.args[i],"&&")  == 0 ){
-                cmd cmd_obj_tmp;
-                cmd_obj_tmp.bg=0;
+                
                 end_of_cmd=i;
                 cmd_obj_tmp.nargs=end_of_cmd-start_of_cmd-1;
                 strcpy(cmd_obj_tmp.cmd,cmd_obj.args[start_of_cmd]);
@@ -469,7 +472,6 @@ int alias(cmd cmd_obj){
                     strcpy(cmd_obj_tmp.args[k-start_of_cmd],cmd_obj.args[k]);
                 }
 
-                //start_of end of
                 for (int i=0 ; i<11 ; i++) {
                     if (!strcmp(cmd_DB[i], cmd_obj_tmp.cmd)){
                         cmd_obj_tmp.internal = 1;
@@ -481,20 +483,57 @@ int alias(cmd cmd_obj){
             }
         }
 
+        // add the last command
+        if (num_cmd!=0){
+             cmd_obj_tmp.bg = 0;
+             end_of_cmd = cmd_obj.nargs + 1 ;
+             cmd_obj_tmp.nargs = end_of_cmd - start_of_cmd - 1;
+             strcpy(cmd_obj_tmp.cmd, cmd_obj.args[start_of_cmd]);
+             for (int k = cmd_obj.nargs ; k >= start_of_cmd; k--) {
+                 cmd_obj_tmp.args[k - start_of_cmd]=cmd_obj.args[k];
+             }
+
+             for (int j = 0; j < 11; j++) {
+                 if (!strcmp(cmd_DB[j], cmd_obj_tmp.cmd)) {
+                     cmd_obj_tmp.internal = 1;
+                 }
+             }
+
+             start_of_cmd = end_of_cmd + 1;
+             // only if there wasnt alias
+             if (old_num_cmd == num_cmd) {
+                 new_node->og_cmd_list[num_cmd] = cmd_obj_tmp;
+                 num_cmd++;
+             }
+         }
+
         //if only one cmd
         if (num_cmd == 0) {
-            for (int i=0 ; i<11 ; i++) {
-                if (!strcmp(cmd_DB[i], cmd_obj.cmd)){
-                    new_node->og_cmd_list[num_cmd].internal = 1;
-                }
-            }
 
-            for (int i = 19 ; i>0 ; i--) {
-                if ( strcmp(cmd_obj.args[i],"&") == 0 ){
-                    new_node->og_cmd_list[num_cmd].bg = 1;
-                    new_node->og_cmd_list[num_cmd].nargs--;
+            for (int i=0; i<(cmd_obj.nagrs - 2); i++){
+                cmd_obj.args[i] = cmd_obj.args[i+2];
+            }
+            
+            for (int i=(cmd_obj.nagrs - 1); i<ARGS_NUM_MAX; i++){
+                cmd_obj.args[i] = NULL; // maybe should be 0?
+            }
+            cmd_obj.nargs = cmd_obj.nargs - 2;
+
+            for (int i = 0; i < 11; i++) {
+                if ((cmd_obj.cmd != NULL) && (strcmp(cmd_DB[i], cmd_obj.cmd) == 0)) {
+                    cmd_obj.internal = 1;
+                    break;
                 }
             }
+            
+            // if (cmd_obj.args[cmd_obj.nargs] != NULL && strcmp(cmd_obj.args[cmd_obj.nargs], "&") == 0) {
+            //     cmd_obj.bg = 1;
+            //     cmd_obj.args[cmd_obj.nargs]=NULL;
+            //     cmd_obj.nargs--;
+            // }
+
+            new_node->og_cmd_list[num_cmd]=cmd_obj; // 1 cmd only
+
         }
         // update ptrs
         new_node->next = head_alias_list;
@@ -563,11 +602,11 @@ int command_selector(cmd cmd_after_parse){
     }
     else if ( strcmp(cmd_after_parse.cmd,cmd_DB[5]  ) == 0  ) {
         //TODO: add check at parser for #args, and pass -1 if no args
-        //  fg();
+          fg(cmd_after_parse);
         return 1;
     }
     else if ( strcmp(cmd_after_parse.cmd,cmd_DB[6] ) == 0  ) {
-        //  bg();
+         bg(cmd_after_parse);
         return 1;
     }
     else if ( strcmp(cmd_after_parse.cmd,cmd_DB[7] ) == 0 ) {
