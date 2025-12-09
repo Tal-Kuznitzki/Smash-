@@ -36,6 +36,7 @@ void sigintHandler(int sig){
             my_system_call(KILL,pid_to_sig,sig); // TODO add args
             if (current_job_index<JOBS_NUM_MAX){
                 strcpy(job_to_be_stopped.cmd,last_fg_cmd.cmd);
+                strcpy(job_to_be_stopped.cmd_full, last_fg_cmd.cmd_full);
                 job_to_be_stopped.PID = pid_to_sig;
                 job_to_be_stopped.JOB_ID = current_job_index;
                 job_to_be_stopped.state = JOB_STATE_STP;

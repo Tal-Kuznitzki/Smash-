@@ -133,6 +133,7 @@ int main(int argc, char* argv[])
                         smash_pid = pid_internal_bg;
                         bg_internal_job.PID = pid_internal_bg;
                         strcpy(bg_internal_job.cmd,cmd_after_parse.cmd);
+                        strcpy(bg_internal_job.cmd_full, cmd_after_parse.cmd_full);
                         bg_internal_job.state = JOB_STATE_BG ;
                         jobs_list[bg_internal_job.JOB_ID]= bg_internal_job ;
                         time(&(bg_internal_job.time)) ;
@@ -164,6 +165,7 @@ int main(int argc, char* argv[])
                         current_job_index++;
                         bg_external_job.PID = pid_bg;
                         strcpy(bg_external_job.cmd,cmd_after_parse.cmd);
+                        strcpy(bg_external_job.cmd_full, cmd_after_parse.cmd_full);
                         bg_external_job.state = JOB_STATE_BG ;
 
                         jobs_list[bg_external_job.JOB_ID]= bg_external_job ;

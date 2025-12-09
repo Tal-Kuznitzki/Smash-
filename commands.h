@@ -34,6 +34,7 @@
 #define QUITVAL -2
 #define ERROR -1
 #define SIGSTP 20
+
 #define  SIGSTOP 19
 #define SIGCONT 18
 /*=============================================================================
@@ -70,6 +71,7 @@ typedef struct cmd {
     char* args[ARGS_NUM_MAX];
     int bg; //1 - bg 0 - fg
     int internal ; // 1 internal  0 -external
+    char cmd_full[CMD_LENGTH_MAX];
     //TODO maybe add a pointer to the cmd ??
 } cmd ;
 typedef struct job {
@@ -78,6 +80,7 @@ typedef struct job {
     char cmd[80];
     int state; // 1 fg  2 bg 3 stopped
     time_t time;
+    char cmd_full[CMD_LENGTH_MAX];
 } job ;
 
 typedef struct list {
