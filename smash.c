@@ -194,6 +194,11 @@ int main(int argc, char* argv[])
                     if (pid_fg == 0 ) //if son - run_program in a new proc
                     {
                         setpgrp();
+                        int dev_null = my_system_call(SYS_OPEN,"/dev/null", 1);
+                        if (dev_null >= 0) {
+                            dup2(dev_null, STDERR_FILENO); // Redirect stderr to /dev/null
+                            close(dev_null);
+                        }
                         external_fg_end_val = my_system_call(SYS_EXECVP,cmd_after_parse.cmd,cmd_after_parse.args);
                         if (external_fg_end_val == ERROR ){
                             char msg[CMD_LENGTH_MAX];
@@ -231,10 +236,24 @@ int main(int argc, char* argv[])
 
                             }
                                 // 2. Check if the process terminated (equivalent to WIFEXITED or WIFSIGNALED)
-                            else{
-                                // Process terminated or was killed (SIGKILL/SIGTERM).
+                            else if ((wait_status & 0x7f) == 0) {
+
+                                // Extract exit code (equivalent to WEXITSTATUS)
+                                // Shift right by 8 bits to get the actual return value (e.g., from return X or exit(X))
+                                int exit_code = (wait_status & 0xff00) >> 8;
+
+                                if (exit_code != 0) {
+                                    // The command ran but failed (e.g., ls -9 returned exit code 2).
+                                    // This is where you would stop a "&&" chain if you were implementing it here.
+                                    perrorSmash(" external","invalid command");
+                                    break;
+                                }
+
+                                job_to_fg_pid = -1; // Smash regains control
+                            }
+                                // 3. Process terminated by a signal (crashed/killed)
+                            else {
                                 job_to_fg_pid = -1;
-                                // The SIGCHLD handler should handle cleanup from the jobs list.
                             }
                         }
 
