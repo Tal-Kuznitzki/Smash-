@@ -33,7 +33,8 @@
 #define EOF_READ 0
 #define QUITVAL -2
 #define ERROR -1
-
+#define SIGSTP 20
+#define  SIGSTOP 19
 #define SIGCONT 18
 /*=============================================================================
 * error handling - some useful macros and examples of error handling,

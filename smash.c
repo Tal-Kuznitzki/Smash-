@@ -17,6 +17,7 @@
 #define QUITVAL -2
 
 
+
 /*=============================================================================
 * classes/structs declarations
 =============================================================================*/
@@ -177,6 +178,7 @@ int main(int argc, char* argv[])
                     last_fg_cmd = cmd_after_parse;
                     if (pid_fg == 0 ) //if son - run_program in a new proc
                     {
+                        setpgrp();
                         external_fg_end_val = my_system_call(SYS_EXECVP,cmd_after_parse.cmd,cmd_after_parse.args);
                         //TODO ERROR CHAINING TO OUTSIDE
                         if (external_fg_end_val == ERROR ) exit(ERROR);
@@ -184,6 +186,36 @@ int main(int argc, char* argv[])
                     }
                     else // if father process
                     {
+                        int wait_ret; int wait_status;
+                        int EINTR_VAL = 4; // Assuming EINTR is 4, check your system's <errno.h> or use my_system_call(SYS_KILL, 0, 0) to check errno
+                        do {
+                            // You MUST use WUNTRACED (2) to return when the child is stopped.
+                            wait_ret = my_system_call(SYS_WAITPID, pid_fg, &wait_status, 2);
+                        } while (wait_ret == ERROR && errno == EINTR_VAL); // Assuming errno is accessible and EINTR is defined
+
+                        if (wait_ret > 0) {
+                            // 1. Check if the process was stopped (equivalent to WIFSTOPPED(wait_status))
+                            if (((wait_status & 0xFF) == 0x7f) && ((wait_status >> 8) == SIGTSTP))
+                            {
+                                // The process was stopped by SIGTSTP/SIGSTOP.
+                                // The signal handler should have already sent SIGSTOP and printed the messages.
+                                // All you need to do here is reset the foreground job tracking.
+                                job_to_fg_pid = -1; // Smash regains control
+
+                                // The job is now in the jobs list (if the signal handler successfully updated it).
+                                // Since the signal handler is unsafe, you might need to check the job list here.
+                                // It's safer to have the signal handler *only* set a volatile flag.
+
+                            }
+                                // 2. Check if the process terminated (equivalent to WIFEXITED or WIFSIGNALED)
+                            else{
+                                // Process terminated or was killed (SIGKILL/SIGTERM).
+                                job_to_fg_pid = -1;
+                                // The SIGCHLD handler should handle cleanup from the jobs list.
+                            }
+                        }
+
+
                         /*   job fg_external_job;
                         //   fg_external_job.JOB_ID = current_job_index ;
                         //  current_job_index++;
@@ -193,8 +225,8 @@ int main(int argc, char* argv[])
 
 
                         jobs_list[fg_external_job.JOB_ID]= fg_external_job ;*/
-                        my_system_call(SYS_WAITPID,pid_fg); //TODO verify
-                        job_to_fg_pid = -1;
+                        // my_system_call(SYS_WAITPID,pid_fg); //TODO verify
+                        // job_to_fg_pid = -1; // TODO verify
                         //  current_job_index = (current_job_index>fg_external_job.JOB_ID) ? fg_external_job.JOB_ID : current_job_index ;
                         //  jobs_list[fg_external_job.JOB_ID] = NULL ;
                         if (external_fg_end_val == ERROR ) break;
