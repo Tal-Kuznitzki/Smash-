@@ -72,7 +72,7 @@ void build_cmd_full(cmd* c) {
 }
 int diff(cmd cmd_obj){
     if (cmd_obj.nargs!=2){
-        perrorSmash("diff","expected 2 arguments");
+        perrorSmash(" diff","expected 2 arguments");
         return ERROR ;
     }
     char* path1 = cmd_obj.args[1];
@@ -83,7 +83,7 @@ int diff(cmd cmd_obj){
     int fd2 = my_system_call(SYS_OPEN,path2,O_RDONLY);
 
     if ( ( (fd1 == ERROR) &&  (errno==ENOENT) ) || ( (fd2 == ERROR) &&  (errno==ENOENT) ) ){
-        perrorSmash("diff","expected valid paths for files");
+        perrorSmash(" diff","expected valid paths for files");
         return ERROR ;
     }
     const size_t CHUNK_SIZE = 4096;
@@ -96,7 +96,7 @@ int diff(cmd cmd_obj){
         bytes_read2 = my_system_call(SYS_READ, fd2, buffer2, CHUNK_SIZE);
 
         if ( ( (bytes_read1 == ERROR) &&  (errno==EISDIR) ) || ( (bytes_read2 == ERROR) &&  (errno==EISDIR) ) ){
-            perrorSmash("diff","paths are not files");
+            perrorSmash(" diff","paths are not files");
             return ERROR;
         }
         if (bytes_read1 != bytes_read2) { //different sizes, so different ofc
@@ -130,7 +130,7 @@ int diff(cmd cmd_obj){
 int fg(cmd cmd_obj) {
     int job_id;
     if (cmd_obj.nargs > 1 ){
-        perrorSmash("fg","invalid arguments");
+        perrorSmash(" fg","invalid arguments");
         return ERROR;
     }
     else if (cmd_obj.nargs == 0){
@@ -144,7 +144,7 @@ int fg(cmd cmd_obj) {
         int job_id = jobs_list[0].JOB_ID;
         if (jobs_list[0].PID == ERROR) {
             // TODO is this the best way to verify empty joblist????
-            perrorSmash("fg", " jobs list is empty");
+            perrorSmash(" fg", " jobs list is empty");
             return ERROR;
         }
         //find maximal job_id
@@ -166,7 +166,7 @@ int fg(cmd cmd_obj) {
         if (job_idx_in_jobs == -1){
             char msg[CMD_LENGTH_MAX];
             sprintf(msg, "job id %d does not exist", job_id);
-            perrorSmash("fg",msg);
+            perrorSmash(" fg",msg);
             return ERROR;
         }
     }
@@ -221,7 +221,7 @@ int fg(cmd cmd_obj) {
 int bg(cmd cmd_obj){
     int job_id = atoi(cmd_obj.args[1]);
     if (cmd_obj.nargs > 1 ){
-        perrorSmash("bg","invalid arguments");
+        perrorSmash(" bg","invalid arguments");
         return ERROR;
     }
     int job_idx_in_jobs = 0;
@@ -238,7 +238,7 @@ int bg(cmd cmd_obj){
         if ( (job_idx_in_jobs !=ERROR) && (jobs_list[job_idx_in_jobs].state != JOB_STATE_STP )){
             char msg[CMD_LENGTH_MAX];
             sprintf(msg, "job id %d is already in background", job_id);
-            perrorSmash("bg",msg);
+            perrorSmash(" bg",msg);
             return ERROR;
         }
     }
@@ -253,7 +253,7 @@ int bg(cmd cmd_obj){
         if (job_idx_in_jobs == ERROR){  // if after the loop we didn't find the job_ID, print err
             char msg[CMD_LENGTH_MAX];
             sprintf(msg, "job id %d does not exist", job_id);
-            perrorSmash("bg",msg);
+            perrorSmash(" bg",msg);
             return ERROR;
         }
         else{ //in case we found the JOB_ID, verify it is stopped.
@@ -261,7 +261,7 @@ int bg(cmd cmd_obj){
             if (jobs_list[job_idx_in_jobs].state != JOB_STATE_STP){ //if not stopped, err
                 char msg[CMD_LENGTH_MAX];
                 sprintf(msg, "job id %d is already in background", job_id);
-                perrorSmash("bg",msg);
+                perrorSmash(" bg",msg);
                 return ERROR;
             }
         }
@@ -276,7 +276,7 @@ int bg(cmd cmd_obj){
 int quit(cmd cmd_obj){// kill the smash
 
     if (cmd_obj.nargs>1){
-        perrorSmash("quit","expected 0 or 1 arguments");
+        perrorSmash(" quit","expected 0 or 1 arguments");
         return ERROR;
     }
     if ( cmd_obj.args[1] != NULL && strcmp(cmd_obj.args[1],"kill") == 0){   //kill jobs in order.
@@ -311,7 +311,7 @@ int quit(cmd cmd_obj){// kill the smash
         }
     }
     else if (cmd_obj.args[1] != NULL && strcmp(cmd_obj.args[1],"kill") !=0 ) {
-        perrorSmash("quit","unexpected arguments");
+        perrorSmash(" quit","unexpected arguments");
         return ERROR;
     }
     return QUITVAL;
@@ -319,7 +319,7 @@ int quit(cmd cmd_obj){// kill the smash
 
 int showpid(cmd cmd_obj) {
     if (cmd_obj.nargs != 0) {
-        perrorSmash("showpid","expected 0 arguments");
+        perrorSmash(" showpid","expected 0 arguments");
         return ERROR;
     }
     else {
@@ -330,14 +330,14 @@ int showpid(cmd cmd_obj) {
 
 int pwd(cmd cmd_obj) {
     if (cmd_obj.nargs != 0) {
-        perrorSmash("pwd","expected 0 arguments");
+        perrorSmash(" pwd","expected 0 arguments");
         return ERROR;
     }
     else {
 
         char* pwd = (char*)malloc(CMD_LENGTH_MAX); 
         if (pwd == NULL) {
-            perrorSmash("pwd","malloc failed");
+            perrorSmash(" pwd","malloc failed");
             exit(-1);
         }
         if (getcwd(pwd, CMD_LENGTH_MAX) != NULL) {
@@ -346,7 +346,7 @@ int pwd(cmd cmd_obj) {
             return 0;
         }
         else {
-            perrorSmash("pwd","getcwd failed");
+            perrorSmash(" pwd","getcwd failed");
             free(pwd);
             return -1;
         }
@@ -357,7 +357,7 @@ int my_kill(cmd cmd_obj) {
 	int signum =(cmd_obj.args[1]!=NULL) ? atoi(cmd_obj.args[1]) : -1;
 	int job_id = (cmd_obj.args[2]!=NULL) ? atoi(cmd_obj.args[2]) : -1 ;
     if ( ( (cmd_obj.nargs ) != 2)  || ( signum < 1) || (( signum ) > 64) ) { // make sure signum is a valid signum (1<=args[1]<=64)
-        perrorSmash("kill","invalid arguments");
+        perrorSmash(" kill","invalid arguments");
 
         return ERROR;
     }
@@ -371,13 +371,13 @@ int my_kill(cmd cmd_obj) {
     char error_msg[MAX_ERROR_LEN] = {0}; // longest message should be no longer than 25
     snprintf(error_msg, MAX_ERROR_LEN, "job id %d does not exist", job_id);
 
-    perrorSmash("kill",error_msg);
+    perrorSmash(" kill",error_msg);
     return -1;
 }
 
 int cd (cmd cmd_obj) {
     if (cmd_obj.nargs != 1) {
-        perrorSmash("cd","expected 1 arguments");
+        perrorSmash(" cd","expected 1 arguments");
         return ERROR;
     }
     else {
@@ -387,7 +387,7 @@ int cd (cmd cmd_obj) {
 
         if (strcmp(cmd_obj.args[1],"-") == 0){
             if (strcmp(old_cd,"") == 0 )  {
-                perrorSmash("cd","old pwd not set");
+                perrorSmash(" cd","old pwd not set");
                 return ERROR;
             }
             else {
@@ -427,13 +427,13 @@ int cd (cmd cmd_obj) {
             DIR* dir = opendir(path);
             if (dir == NULL){ // check if path valid
                 if (errno == ENOENT){ //if directory doesnt exist
-                    perrorSmash("cd","target directory does not exist");
+                    perrorSmash(" cd","target directory does not exist");
                 }
                 else if (errno == ENOTDIR) { //if path is of a file
                     char error_msg[MAX_ERROR_LEN + CMD_LENGTH_MAX];
                     snprintf(error_msg, MAX_ERROR_LEN + CMD_LENGTH_MAX, "%s: not a directory", path);
 
-                    perrorSmash("cd",error_msg);
+                    perrorSmash(" cd",error_msg);
                     return  ERROR;
 
                 }
@@ -453,7 +453,7 @@ int cd (cmd cmd_obj) {
 }
 int jobs(cmd cmd_obj){
     if (cmd_obj.nargs != 0){
-        perrorSmash("jobs","expected 0 arguments");
+        perrorSmash(" jobs","expected 0 arguments");
         return ERROR;
 		}
     else {
@@ -718,7 +718,7 @@ int unalias(cmd cmd_obj) {
 
         current = current->next;
     }
-    perrorSmash("unalias", "command not found");
+    perrorSmash(" unalias", "command not found");
     return ERROR;
 
 }
@@ -820,6 +820,7 @@ cmd* parseCommandExample(char* line){
 
             if ((cmd_obj.args[i] != NULL) && (strcmp(cmd_obj.args[i], "&&") == 0) &&  (strcmp(cmd_obj.cmd,"alias")!=0) ) {
                 cmd_obj_tmp.bg = 0;
+                cmd_obj_tmp.internal = 0;
                 end_of_cmd = i;
                 cmd_obj_tmp.nargs = end_of_cmd - start_of_cmd - 1;
                 strcpy(cmd_obj_tmp.cmd, cmd_obj.args[start_of_cmd]);
@@ -893,6 +894,7 @@ cmd* parseCommandExample(char* line){
                      if ((current->alias != NULL) && (strcmp(current->alias, cmd_obj_tmp.cmd) == 0)) {
                          int j = 0;
                          while ( (current->og_cmd_list[j].bg != ERROR) && (current->og_cmd_list[j].args[0])!=NULL) {
+                            printf("lalala");
                              cmd_list[num_cmd] = current->og_cmd_list[j];
                              j++;
                              num_cmd++;
