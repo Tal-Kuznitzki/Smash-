@@ -1125,7 +1125,7 @@ cmd* parseCommandExample(char* line){
                      if ((current->alias != NULL) && (strcmp(current->alias, cmd_obj_tmp.cmd) == 0)) {
                          int j = 0;
                          while ( (current->og_cmd_list[j].bg != ERROR) && (current->og_cmd_list[j].args[0])!=NULL) {
-                            printf("lalala");
+
                              cmd_list[num_cmd] = current->og_cmd_list[j];
                              j++;
                              num_cmd++;

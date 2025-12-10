@@ -55,7 +55,7 @@ void sigintHandler(int sig){
                 jobs_list[job_id] = job_to_be_stopped;
                 //current_job_index++;
             }
-            jobs_list[job_id_to_sig].state=JOB_STATE_STP ;
+           // jobs_list[job_id_to_sig].state=JOB_STATE_STP ;
             //TODO handle error!
             char msg[CMD_LENGTH_MAX];
             sprintf(msg,"process %d was stopped",pid_to_sig);
