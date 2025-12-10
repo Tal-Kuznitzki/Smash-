@@ -387,7 +387,21 @@ int quit(cmd cmd_obj){// kill the smash
             printf("sending SIGTERM... ");
             fflush(stdout);
             bool job_is_dead = false;
-            for (int second = 0; second < 5 ; ++second) {
+            time_t start_time = time(NULL);
+            float diff=0;
+            while (diff<5){
+                int still_alive = my_system_call(SYS_KILL,jobs_list[i].PID,0);
+                if (still_alive == ERROR){
+                    //eliminated the process successfully :)
+                    job_is_dead=true;
+                    break;
+                }
+                time_t curr_time=time(NULL);
+                 diff = difftime(curr_time, start_time);
+
+
+            }
+/*            for (int second = 0; second < 5 ; ++second) {
                 int still_alive = my_system_call(SYS_KILL,jobs_list[i].PID,0);
                 if (still_alive == ERROR){
                     //eliminated the process successfully :)
@@ -395,7 +409,7 @@ int quit(cmd cmd_obj){// kill the smash
                     break;
                 }
                 sleep(1);
-            }
+            }*/
             if (job_is_dead){
                 printf("done");
                 fflush(stdout);
@@ -575,6 +589,7 @@ int jobs(cmd cmd_obj){
     }
 }
 
+
 int alias(cmd cmd_obj){
 
     // printf("cmd = %s, nargs = %d, bg = %d", cmd_obj.cmd, cmd_obj.nargs, cmd_obj.bg);
@@ -659,6 +674,7 @@ int alias(cmd cmd_obj){
                     if (dup) {
                         strcpy(dup, cmd_obj.args[k]);
                         cmd_obj_tmp.args[k-start_of_cmd] = dup;
+                        printf("%s, %s\n", cmd_obj_tmp.cmd, cmd_obj_tmp.args[k-start_of_cmd]);
                     }
                     else{ return ERROR;
                     }
@@ -676,19 +692,14 @@ int alias(cmd cmd_obj){
 
             // check if aliased
             if (cmd_obj_tmp.internal == 0) {
-                printf("alias cehck \n");
                 list *current = head_alias_list;
                 while (current != NULL) {
                     if ( (current->alias != NULL) && (strcmp(current->alias, cmd_obj_tmp.cmd) == 0)) {
                         int j = 0;
-                        printf("found: %s\n", current->alias);
                         while ( (current->og_cmd_list[j].bg != ERROR ) && (current->og_cmd_list[j].args[0]!=NULL && (current->og_cmd_list[j].cmd != NULL) && (current->og_cmd_list[j].cmd_full != NULL))  ) {
                             int d = 0;
-                            printf("%s, %s \n", current->og_cmd_list[j].cmd, current->og_cmd_list[j].cmd_full);
                             strcpy(new_node->og_cmd_list[num_cmd].cmd, current->og_cmd_list[j].cmd);
-                            printf("%s, \n", new_node->og_cmd_list[num_cmd].cmd);
                             strcpy(new_node->og_cmd_list[num_cmd].cmd_full, current->og_cmd_list[j].cmd_full);
-                            printf("after copies\n");
                             new_node->og_cmd_list[num_cmd].bg = current->og_cmd_list[j].bg;
                             new_node->og_cmd_list[num_cmd].internal =  current->og_cmd_list[j].internal;
                             new_node->og_cmd_list[num_cmd].nargs = current->og_cmd_list[j].nargs;
@@ -699,7 +710,6 @@ int alias(cmd cmd_obj){
                                     strcpy(dup, current->og_cmd_list[j].args[d]);
                                     new_node->og_cmd_list[num_cmd].args[d] = dup;
                                     d++;
-                                    printf("malloc worked! dup= %s\n", new_node->og_cmd_list[num_cmd].args[d]);
                                 }
                                 else{ return ERROR;
                                 }
@@ -722,6 +732,8 @@ int alias(cmd cmd_obj){
                 num_cmd++;
                 old_num_cmd++;
             }
+            //printf("num_cmd = %d, old_num_cmd = %d\n", num_cmd, old_num_cmd);
+            old_num_cmd = num_cmd;
 
         }
     }
@@ -904,16 +916,16 @@ int alias(cmd cmd_obj){
     return 0;
 
 }
+
+
 int unalias(cmd cmd_obj) {
 
     list* current = head_alias_list;
-    printf("%s\n %s\n", cmd_obj.args[1], current->alias);
+
 
     while (current != NULL) {
         if ((current->alias != NULL) && (cmd_obj.args[1] != NULL)){
-            printf("in first if\n");
             if ( strcmp(current->alias, cmd_obj.args[1]) == 0 ) {
-                printf("in if. current->alias = %s\n", current->alias);
                 if (current->prev == NULL) {
                     // if current is head - update head
                     head_alias_list = current->next;

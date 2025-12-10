@@ -81,6 +81,7 @@ int main(int argc, char* argv[])
     while(1) {
         remove_finished_jobs();
         printf("smash > ");
+        fflush(stdout);
         if (fgets(_line, CMD_LENGTH_MAX, stdin)==NULL ){
             break;
         }
@@ -214,13 +215,22 @@ int main(int argc, char* argv[])
                     if (pid_fg == 0 ) //if son - run_program in a new proc
                     {
                         setpgrp();
-                        int dev_null = my_system_call(SYS_OPEN,"/dev/null", 1);
+                        int original_stderr = dup(STDERR_FILENO);
+
+                        // 2. Silence Standard Error (for the running command like 'ls')
+                        int dev_null = my_system_call(SYS_OPEN, "/dev/null", 1); // 1 = O_WRONLY
+                        if (dev_null >= 0) {
+                            dup2(dev_null, STDERR_FILENO);
+                            // We don't close dev_null here just to be safe with the my_system_call wrapper
+                        }
+/*                        int dev_null = my_system_call(SYS_OPEN,"/dev/null", 1);
                         if (dev_null >= 0) {
                             dup2(dev_null, STDERR_FILENO); // Redirect stderr to /dev/null
                             close(dev_null);
-                        }
+                        }*/
                         external_fg_end_val = my_system_call(SYS_EXECVP,cmd_after_parse.cmd,cmd_after_parse.args);
                         if (external_fg_end_val == ERROR ){
+                            dup2(original_stderr, STDERR_FILENO);
                             char msg[CMD_LENGTH_MAX];
                             if (errno == ENOENT ){ // if errno indicated cannot find program
                                 sprintf(msg,"cannot find program");
