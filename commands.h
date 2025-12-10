@@ -124,6 +124,7 @@ void remove_finished_jobs();
 int job_to_fg_pid;
 int alias_flag;
 cmd last_fg_cmd;
+bool can_print;
 
 job jobs_list[JOBS_NUM_MAX];
 cmd cmd_list[ARGS_NUM_MAX];

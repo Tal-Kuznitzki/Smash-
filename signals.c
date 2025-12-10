@@ -31,8 +31,8 @@ void sigintHandler(int sig){
         //perrorSmash("smash","caught CTRL+Z");
         printf("smash: caught CTRL+Z\n");
         if ( ( pid_to_sig>=0 )  ) {
-            printf("@PID TO SEND SIG TO: %d\n",pid_to_sig);
-            printf("@SIG TO SEND SIG TO: %d\n",sig);
+/*            printf("@PID TO SEND SIG TO: %d\n",pid_to_sig);
+            printf("@SIG TO SEND SIG TO: %d\n",sig);*/
 
 
             my_system_call(KILL,pid_to_sig,sig);

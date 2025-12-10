@@ -318,12 +318,15 @@ int fg(cmd cmd_obj) {
     return 0;
 }*/
 
-int bg(cmd cmd_obj){
+/*
+int old_bg(cmd cmd_obj){
+    int job_id
     if (cmd_obj.nargs > 1 ){
         perrorSmash(" bg","invalid arguments");
         return ERROR;
+    } else if (cmd_obj.nargs == 1 ) {
+        job_id = atoi(cmd_obj.args[1]);
     }
-    int job_id = atoi(cmd_obj.args[1]);
     int job_idx_in_jobs = ERROR;
     if (cmd_obj.nargs==0){
         bool job_list_empty=1;
@@ -385,7 +388,97 @@ int bg(cmd cmd_obj){
     jobs_list[job_idx_in_jobs].state = JOB_STATE_BG;
     return 0;
 }
+*/
 
+
+
+
+int bg(cmd cmd_obj) {
+    // 1. Check for too many arguments (Spec: Page 12, line 269)
+    if (cmd_obj.nargs > 1) {
+        perrorSmash(" bg", "invalid arguments");
+        return ERROR;
+    }
+
+    int job_idx_in_jobs = ERROR;
+    int target_job_id = -1;
+
+    // 2. Case: No arguments provided (Resume max stopped job)
+    if (cmd_obj.nargs == 0) {
+        int max_stopped_id = -1;
+
+        // Iterate to find the stopped job with the highest ID
+        for (int i = 0; i < JOBS_NUM_MAX; i++) {
+            // Check if job exists AND is stopped
+            if (jobs_list[i].PID != ERROR && jobs_list[i].state == JOB_STATE_STP) {
+                if (jobs_list[i].JOB_ID > max_stopped_id) {
+                    max_stopped_id = jobs_list[i].JOB_ID;
+                    job_idx_in_jobs = i;
+                }
+            }
+        }
+
+        // If no stopped job was found (Spec: Page 12, line 267-268)
+        if (job_idx_in_jobs == ERROR) {
+            perrorSmash(" bg", "there are no stopped jobs to resume");
+            return ERROR;
+        }
+        target_job_id = max_stopped_id;
+    }
+        // 3. Case: Specific Job ID provided
+    else {
+        char* arg = cmd_obj.args[1];
+
+        // --- VALIDATION: Check if argument is a pure number ---
+        for (int i = 0; arg[i] != '\0'; i++) {
+            // Allow negative sign only at index 0 (though IDs are usually positive)
+            if (arg[i] == '-' && i == 0) continue;
+            if (arg[i] < '0' || arg[i] > '9') {
+                perrorSmash(" bg", "invalid arguments");
+                return ERROR;
+            }
+        }
+
+        target_job_id = atoi(arg); // Safe to convert now
+
+        // Find the job in the list
+        for (int j = 0; j < JOBS_NUM_MAX; ++j) {
+            if (jobs_list[j].JOB_ID == target_job_id && jobs_list[j].PID != ERROR) {
+                job_idx_in_jobs = j;
+                break;
+            }
+        }
+
+        // Error: Job ID does not exist (Spec: Page 12, line 262-263)
+        if (job_idx_in_jobs == ERROR) {
+            char msg[CMD_LENGTH_MAX];
+            sprintf(msg, "job id %d does not exist", target_job_id);
+            perrorSmash(" bg", msg);
+            return ERROR;
+        }
+        else {
+            // Error: Job exists but is NOT stopped (Spec: Page 12, line 265-266)
+            if (jobs_list[job_idx_in_jobs].state != JOB_STATE_STP) {
+                char msg[CMD_LENGTH_MAX];
+                sprintf(msg, "job id %d is already in background", target_job_id);
+                perrorSmash(" bg", msg);
+                return ERROR;
+            }
+        }
+    }
+
+    // 4. Execution (Spec: Page 11, line 239)
+    // Print the command and PID
+    printf("%s : %d\n", jobs_list[job_idx_in_jobs].cmd_full, jobs_list[job_idx_in_jobs].PID);
+
+    // Send SIGCONT
+    my_system_call(SYS_KILL, jobs_list[job_idx_in_jobs].PID, SIGCONT);
+
+    // Update state to Background
+    jobs_list[job_idx_in_jobs].state = JOB_STATE_BG;
+
+    return 0;
+}
 int quit(cmd cmd_obj){// kill the smash
 
     if (cmd_obj.nargs>1){
@@ -499,10 +592,10 @@ int my_kill(cmd cmd_obj) {
     snprintf(error_msg, MAX_ERROR_LEN, "job id %d does not exist", job_id);
 
     perrorSmash(" kill",error_msg);
-    return -1;
+    return ERROR;
 }
 
-int cd (cmd cmd_obj) {
+int cd(cmd cmd_obj) {
     if (cmd_obj.nargs != 1) {
         perrorSmash(" cd","expected 1 arguments");
         return ERROR;
@@ -555,13 +648,14 @@ int cd (cmd cmd_obj) {
             if (dir == NULL){ // check if path valid
                 if (errno == ENOENT){ //if directory doesnt exist
                     perrorSmash(" cd","target directory does not exist");
+                    return ERROR;
                 }
                 else if (errno == ENOTDIR) { //if path is of a file
                     char error_msg[MAX_ERROR_LEN + CMD_LENGTH_MAX];
                     snprintf(error_msg, MAX_ERROR_LEN + CMD_LENGTH_MAX, "%s: not a directory", path);
 
                     perrorSmash(" cd",error_msg);
-                    return  ERROR;
+                    return ERROR;
 
                 }
             }
@@ -574,7 +668,6 @@ int cd (cmd cmd_obj) {
             }
 
         }
-
     }
     return 0;
 }
@@ -979,29 +1072,34 @@ int unalias(cmd cmd_obj) {
 
 
 int command_selector(cmd cmd_after_parse){
+    int answer= ERROR;
     if ( strcmp(cmd_after_parse.cmd,cmd_DB[0] ) == 0 ){
-         return showpid(cmd_after_parse);
+        answer=showpid(cmd_after_parse);
+         return answer;
     }
     else if ( strcmp(cmd_after_parse.cmd,cmd_DB[1] ) == 0  ) {
-        return pwd(cmd_after_parse);
+        answer = pwd(cmd_after_parse);
+        return answer;
     }
     else if ( strcmp(cmd_after_parse.cmd,cmd_DB[2] ) == 0  ) {
-         return cd(cmd_after_parse);
+        answer=cd(cmd_after_parse);
+         return answer;
     }
     else if ( strcmp(cmd_after_parse.cmd,cmd_DB[3] ) == 0  ) {
-         return jobs(cmd_after_parse);
+        answer = jobs(cmd_after_parse);
+         return answer;
     }
     else if ( strcmp(cmd_after_parse.cmd,cmd_DB[4] ) == 0  ) {
-         return my_kill(cmd_after_parse);
+        answer = my_kill(cmd_after_parse);
+         return answer;
     }
     else if ( strcmp(cmd_after_parse.cmd,cmd_DB[5]  ) == 0  ) {
-        //TODO: add check at parser for #args, and pass -1 if no args
-          fg(cmd_after_parse);
-        return 1;
+        answer = fg(cmd_after_parse);
+        return answer;
     }
     else if ( strcmp(cmd_after_parse.cmd,cmd_DB[6] ) == 0  ) {
-         bg(cmd_after_parse);
-        return 1;
+        answer = bg(cmd_after_parse);
+        return answer;
     }
     else if ( strcmp(cmd_after_parse.cmd,cmd_DB[7] ) == 0 ) {
          if( quit(cmd_after_parse) == QUITVAL){
@@ -1010,19 +1108,19 @@ int command_selector(cmd cmd_after_parse){
          return 1;
     }
     else if ( strcmp(cmd_after_parse.cmd,cmd_DB[8]  ) == 0 ) {
-           diff(cmd_after_parse);
-        return 1;
+        answer = diff(cmd_after_parse);
+        return answer;
     }
     else if ( strcmp(cmd_after_parse.cmd,cmd_DB[9] ) == 0  ) {
-           alias(cmd_after_parse);
-        return 1;
+        answer = alias(cmd_after_parse);
+        return answer;
     }
     else if ( strcmp(cmd_after_parse.cmd,cmd_DB[10] ) == 0  ) {
-         unalias(cmd_after_parse);
-        return 1;
+        answer = unalias(cmd_after_parse);
+        return answer;
     }
 
-    return 1;
+    return ERROR;
 
 }
 

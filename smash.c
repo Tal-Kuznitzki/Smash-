@@ -78,6 +78,7 @@ int main(int argc, char* argv[])
     int end_val=0;
     int external_fg_end_val=0;
     smash_pid =  getpid();
+    can_print=1;
     while(1) {
         remove_finished_jobs();
         printf("smash > ");
@@ -171,11 +172,13 @@ int main(int argc, char* argv[])
 
                             if (errno == ENOENT && alias_flag == 0 ){ // if errno indicated cannot find program
                                 sprintf(msg,"cannot find program");
+
                             }
                             else if (alias_flag == 0){
                                 sprintf(msg,"invalid command");
                             }
                             if( strcmp(msg,"")!=0) {
+                                can_print=0;
                                 perrorSmash(" external",msg);
                                 exit(ERROR);
                             }
@@ -218,22 +221,23 @@ int main(int argc, char* argv[])
                     if (pid_fg == 0 ) //if son - run_program in a new proc
                     {
                         setpgrp();
-                        int original_stderr = dup(STDERR_FILENO);
+/*                        int original_stderr = dup(STDERR_FILENO);
 
                         // 2. Silence Standard Error (for the running command like 'ls')
                         int dev_null = my_system_call(SYS_OPEN, "/dev/null", 1); // 1 = O_WRONLY
                         if (dev_null >= 0) {
-                            dup2(dev_null, STDERR_FILENO);
+                            dup2(dev_null, STDERR_FILENO);*/
                             // We don't close dev_null here just to be safe with the my_system_call wrapper
-                        }
+                        //}
 /*                        int dev_null = my_system_call(SYS_OPEN,"/dev/null", 1);
                         if (dev_null >= 0) {
                             dup2(dev_null, STDERR_FILENO); // Redirect stderr to /dev/null
                             close(dev_null);
                         }*/
                         external_fg_end_val = my_system_call(SYS_EXECVP,cmd_after_parse.cmd,cmd_after_parse.args);
+
                         if (external_fg_end_val == ERROR ){
-                            dup2(original_stderr, STDERR_FILENO);
+                            //dup2(original_stderr, STDERR_FILENO);
                             char msg[CMD_LENGTH_MAX];
                             if ((errno == ENOENT) && alias_flag == 0 ){ // if errno indicated cannot find program
                                 sprintf(msg,"cannot find program");
@@ -277,10 +281,11 @@ int main(int argc, char* argv[])
                                 // Shift right by 8 bits to get the actual return value (e.g., from return X or exit(X))
                                 int exit_code = (wait_status & 0xff00) >> 8;
 
-                                if (exit_code != 0) {
+                                if (exit_code != 0 && can_print) {
                                     // The command ran but failed (e.g., ls -9 returned exit code 2).
                                     // This is where you would stop a "&&" chain if you were implementing it here.
-                                    perrorSmash(" external","invalid command");
+                                    //perrorSmash(" external","invalid command");
+                                    job_to_fg_pid = -1;
                                     break;
                                 }
 
