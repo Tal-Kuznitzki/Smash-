@@ -1160,10 +1160,10 @@ int command_selector(cmd cmd_after_parse){
         return answer;
     }
     else if ( strcmp(cmd_after_parse.cmd,cmd_DB[7] ) == 0 ) {
-         if( quit(cmd_after_parse) == QUITVAL){
+        answer = quit(cmd_after_parse);
+         if( answer == QUITVAL){
              return QUITVAL ; //SIGNAL TO END the program
          }
-         return 1;
     }
     else if ( strcmp(cmd_after_parse.cmd,cmd_DB[8]  ) == 0 ) {
         answer = diff(cmd_after_parse);
@@ -1177,8 +1177,7 @@ int command_selector(cmd cmd_after_parse){
         answer = unalias(cmd_after_parse);
         return answer;
     }
-
-    return ERROR;
+    return answer;
 
 }
 

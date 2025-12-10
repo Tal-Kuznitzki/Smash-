@@ -118,7 +118,11 @@ int main(int argc, char* argv[])
 
                 }
                 else { //internal-bg
-                    int pid_internal_bg = my_system_call(1); // FORK
+                    int pid_internal_bg = my_system_call(SYS_FORK); // FORK
+                    if (pid_internal_bg==ERROR){
+                        perrorSmash("","fork failed");
+                        return ERROR;
+                    }
                     if (pid_internal_bg==0){
                         setpgrp();
                         int output = command_selector(cmd_after_parse);  // 0 all good -1 error -2 quit
@@ -162,11 +166,16 @@ int main(int argc, char* argv[])
                 if(cmd_after_parse.bg) // external-bg
                 {
                     int pid_bg = my_system_call(SYS_FORK); // FORK
+                    if (pid_bg==ERROR){
+                        perrorSmash("","fork failed");
+                        return ERROR;
+                    }
                     if (pid_bg == 0 ) //if son - run_program in a new proc
                     {
                         setpgrp();
                         job bg_external_job;
                         int external_bg_end_val = my_system_call(SYS_EXECVP,cmd_after_parse.cmd,cmd_after_parse.args);
+
                         if (external_bg_end_val == ERROR ){
                             char msg[CMD_LENGTH_MAX];
 
@@ -216,6 +225,10 @@ int main(int argc, char* argv[])
 
                 else{ // external-fg
                     int pid_fg = my_system_call(SYS_FORK); // FORK
+                    if (pid_fg==ERROR){
+                        perrorSmash("","fork failed");
+                        return ERROR;
+                    }
                     job_to_fg_pid = pid_fg;
                     last_fg_cmd = cmd_after_parse;
                     if (pid_fg == 0 ) //if son - run_program in a new proc
