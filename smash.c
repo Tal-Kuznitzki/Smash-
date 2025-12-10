@@ -168,14 +168,17 @@ int main(int argc, char* argv[])
                         int external_bg_end_val = my_system_call(SYS_EXECVP,cmd_after_parse.cmd,cmd_after_parse.args);
                         if (external_bg_end_val == ERROR ){
                             char msg[CMD_LENGTH_MAX];
-                            if (errno == ENOENT ){ // if errno indicated cannot find program
+
+                            if (errno == ENOENT && alias_flag == 0 ){ // if errno indicated cannot find program
                                 sprintf(msg,"cannot find program");
                             }
-                            else {
+                            else if (alias_flag == 0){
                                 sprintf(msg,"invalid command");
                             }
-                            perrorSmash(" external",msg);
-                            exit(ERROR);
+                            if( strcmp(msg,"")!=0) {
+                                perrorSmash(" external",msg);
+                                exit(ERROR);
+                            }
                         }
 
                         //current_job_index = (current_job_index>bg_external_job.JOB_ID) ? bg_external_job.JOB_ID : current_job_index ;
@@ -232,13 +235,16 @@ int main(int argc, char* argv[])
                         if (external_fg_end_val == ERROR ){
                             dup2(original_stderr, STDERR_FILENO);
                             char msg[CMD_LENGTH_MAX];
-                            if (errno == ENOENT ){ // if errno indicated cannot find program
+                            if ((errno == ENOENT) && alias_flag == 0 ){ // if errno indicated cannot find program
                                 sprintf(msg,"cannot find program");
                             }
-                            else {
+                            else if(alias_flag == 0) {
                                 sprintf(msg,"invalid command");
                             }
-                            perrorSmash(" external",msg);
+                            if( strcmp(msg,"")!=0) {
+                                perrorSmash(" external",msg);
+                                exit(ERROR);
+                            }
                         }
                         exit(0);
                     }

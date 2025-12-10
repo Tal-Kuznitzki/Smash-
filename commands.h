@@ -122,6 +122,7 @@ int cd (cmd cmd_obj);
 int jobs(cmd cmd_obj);
 void remove_finished_jobs();
 int job_to_fg_pid;
+int alias_flag;
 cmd last_fg_cmd;
 
 job jobs_list[JOBS_NUM_MAX];

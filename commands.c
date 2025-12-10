@@ -319,15 +319,28 @@ int fg(cmd cmd_obj) {
 }*/
 
 int bg(cmd cmd_obj){
-    int job_id = atoi(cmd_obj.args[1]);
     if (cmd_obj.nargs > 1 ){
         perrorSmash(" bg","invalid arguments");
         return ERROR;
     }
-    int job_idx_in_jobs = 0;
-    if (job_id == NOARGSVAL ){
-        int maxId = jobs_list[0].JOB_ID;
-        for (int i = 1; i < JOBS_NUM_MAX; i++) {
+    int job_id = atoi(cmd_obj.args[1]);
+    int job_idx_in_jobs = ERROR;
+    if (cmd_obj.nargs==0){
+        bool job_list_empty=1;
+        for (int i = 0; i < ; ++i) {
+            if (jobs_list[i]!=NULL){
+                job_list_empty=0;
+                break;
+                }
+        }
+        int maxId =  (job_list_empty==1) ?  ERROR :jobs_list[0].JOB_ID;
+        if (maxId==ERROR){
+            char msg[CMD_LENGTH_MAX];
+            sprintf(msg, "there are no stopped jobs to resume", job_id);
+            perrorSmash(" bg",msg);
+            return ERROR;
+        }
+        for (int i = 0; i < JOBS_NUM_MAX; i++) {
             // TODO: MAKE SURE REGARDING NO JOB_ID AND NO JOB IN STOPPED, BECAUSE WE SAID IT IS EQUAL TO MAX, ALSO MAKE SURE ARG FORMAT IS OKAY
 
             if ( ( ( jobs_list[i].JOB_ID < 100 )&& (jobs_list[i].JOB_ID > 100 )  ) &&  (jobs_list[i].JOB_ID > maxId )   ) {
@@ -1026,6 +1039,7 @@ void perrorSmash(const char* cmd, const char* msg)
 
 
 cmd* parseCommandExample(char* line){
+    alias_flag = 0;
     cmd cmd_obj;
     cmd_obj.bg = 0;
     cmd_obj.internal = 0;
@@ -1087,6 +1101,7 @@ cmd* parseCommandExample(char* line){
                     list *current = head_alias_list;
                     while (current != NULL) {
                         if ( (current->alias != NULL) && (strcmp(current->alias, cmd_obj_tmp.cmd) == 0)) {
+                            alias_flag = 1;
                             int j = 0;
                             while ( (current->og_cmd_list[j].bg != ERROR ) && (current->og_cmd_list[j].args[0]!=NULL)  ) {
                                 cmd_list[num_cmd] = current->og_cmd_list[j];
@@ -1135,6 +1150,7 @@ cmd* parseCommandExample(char* line){
                  while (current != NULL) {
                      //printf("insde\n");
                      if ((current->alias != NULL) && (strcmp(current->alias, cmd_obj_tmp.cmd) == 0)) {
+                         alias_flag = 1;
                          int j = 0;
                          while ( (current->og_cmd_list[j].bg != ERROR) && (current->og_cmd_list[j].args[0])!=NULL) {
 
@@ -1167,6 +1183,7 @@ cmd* parseCommandExample(char* line){
                 while (current != NULL) {
                     //printf("%d",);
                     if ((current->alias != NULL) && (strcmp(current->alias, cmd_obj.cmd) == 0)) {
+                        alias_flag = 1;
                         int j = 0;
                         while (current->og_cmd_list[j].bg != ERROR && (current->og_cmd_list[j].args[0]!=NULL) ) {
                             cmd_list[num_cmd] = current->og_cmd_list[j];
