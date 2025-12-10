@@ -68,7 +68,8 @@ void sigintHandler(int sig){
 
     else if (sig==CTRLC){
         printf("smash: caught CTRL+C\n");
-        if (pid_to_sig>=0) {
+//        if (pid_to_sig>=0) {
+            if (pid_to_sig != smash_pid && pid_to_sig != -1){
             //current_job_index = (current_job_index>job_id_to_sig) ? job_id_to_sig : current_job_index ;
             // jobs_list[job_id_to_sig] = NULL;
             char msg[CMD_LENGTH_MAX];
@@ -77,7 +78,7 @@ void sigintHandler(int sig){
             printf("smash: %s\n",msg);
             my_system_call(SYS_KILL, pid_to_sig, SIGKILL);
         }
-        else{
+        else if (pid_to_sig != smash_pid){
             perrorSmash("smash","ctrl-C failed"); //TODO verify if need
         }
 

@@ -64,6 +64,9 @@ void remove_finished_jobs() {
 
             // Check if the job has finished
             ret_pid = my_system_call(SYS_WAITPID, jobs_list[i].PID, &status, WNOHANG_VAL);
+            if (ret_pid==ERROR){
+                perrorSmash("","waitpid failed");
+            }
 
             // Case 1: Process finished (Zombie reaped)
             // If ret_pid > 0, the process changed state. We check it wasn't just stopped.
@@ -117,6 +120,8 @@ void build_cmd_full(cmd* c) {
     }
 }
 int diff(cmd cmd_obj){
+    int ret_pid1 =0;
+    int ret_pid2=0;
     if (cmd_obj.nargs!=2){
         perrorSmash(" diff","expected 2 arguments");
         return ERROR ;
@@ -126,7 +131,15 @@ int diff(cmd cmd_obj){
 
     //opening both files;
     int fd1 = my_system_call(SYS_OPEN,path1,O_RDONLY);
+    if (fd1==ERROR){
+        perrorSmash("","open failed");
+        return ERROR;
+    }
     int fd2 = my_system_call(SYS_OPEN,path2,O_RDONLY);
+    if (fd2==ERROR){
+        perrorSmash("","open failed");
+        return ERROR;
+    }
 
     if ( ( (fd1 == ERROR) &&  (errno==ENOENT) ) || ( (fd2 == ERROR) &&  (errno==ENOENT) ) ){
         perrorSmash(" diff","expected valid paths for files");
@@ -140,32 +153,63 @@ int diff(cmd cmd_obj){
     while (1) {
         bytes_read1 = my_system_call(SYS_READ, fd1, buffer1, CHUNK_SIZE);
         bytes_read2 = my_system_call(SYS_READ, fd2, buffer2, CHUNK_SIZE);
-
         if ( ( (bytes_read1 == ERROR) &&  (errno==EISDIR) ) || ( (bytes_read2 == ERROR) &&  (errno==EISDIR) ) ){
             perrorSmash(" diff","paths are not files");
             return ERROR;
         }
         if (bytes_read1 != bytes_read2) { //different sizes, so different ofc
-            my_system_call(SYS_CLOSE, fd1);
-            my_system_call(SYS_CLOSE, fd2);
+             ret_pid1 = my_system_call(SYS_CLOSE, fd1);
+            if (ret_pid1==ERROR){
+                perrorSmash("","close failed");
+                return ERROR;
+            }
+             ret_pid2 = my_system_call(SYS_CLOSE, fd2);
+            if (ret_pid2==ERROR){
+                perrorSmash("","close failed");
+                return ERROR;
+            }
             printf("%d\n", DIFFERENT);
             return DIFFERENT;
         }
         if ( memcmp(buffer1, buffer2, bytes_read1) != IDENTICAL ) { //chunks are not identical
-            my_system_call(SYS_CLOSE, fd1);
-            my_system_call(SYS_CLOSE, fd2);
+            ret_pid1 = my_system_call(SYS_CLOSE, fd1);
+            if (ret_pid1==ERROR){
+                perrorSmash("","close failed");
+                return ERROR;
+            }
+            ret_pid2 = my_system_call(SYS_CLOSE, fd2);
+            if (ret_pid2==ERROR){
+                perrorSmash("","close failed");
+                return ERROR;
+            }
             printf("%d\n", DIFFERENT);
             return DIFFERENT;
         }
         if ( ( ( bytes_read1 == EOF_READ ) && (bytes_read2 != EOF_READ ) ) || ( (bytes_read2 == EOF_READ) && (bytes_read1 != EOF_READ) ) ) { //ended reading one file but not the other.
-            my_system_call(SYS_CLOSE, fd1);
-            my_system_call(SYS_CLOSE, fd2);
+            ret_pid1 = my_system_call(SYS_CLOSE, fd1);
+            if (ret_pid1==ERROR){
+                perrorSmash("","close failed");
+                return ERROR;
+            }
+            ret_pid2 = my_system_call(SYS_CLOSE, fd2);
+            if (ret_pid2==ERROR){
+                perrorSmash("","close failed");
+                return ERROR;
+            }
             printf("%d\n", DIFFERENT);
             return DIFFERENT;
         }
         if ( (bytes_read1 == EOF_READ ) && (bytes_read2 == EOF_READ) ) { //ended reading both files no errors so far
-            my_system_call(SYS_CLOSE, fd1);
-            my_system_call(SYS_CLOSE, fd2);
+            ret_pid1 = my_system_call(SYS_CLOSE, fd1);
+            if (ret_pid1==ERROR){
+                perrorSmash("","close failed");
+                return ERROR;
+            }
+            ret_pid2 = my_system_call(SYS_CLOSE, fd2);
+            if (ret_pid2==ERROR){
+                perrorSmash("","close failed");
+                return ERROR;
+            }
             printf("%d\n", IDENTICAL);
             return IDENTICAL;
         }
@@ -230,7 +274,12 @@ int fg(cmd cmd_obj) {
 
     // 4. Send SIGCONT if needed
     if (jobs_list[job_idx_in_jobs].state == JOB_STATE_STP){
-        my_system_call(SYS_KILL, jobs_list[job_idx_in_jobs].PID, SIGCONT);
+        int ret_sys = my_system_call(SYS_KILL, jobs_list[job_idx_in_jobs].PID, SIGCONT);
+        if (ret_sys==ERROR){
+            perrorSmash("","kill failed");
+            return ERROR;
+        }
+
     }
 
     // 5. Remove from jobs list (According to spec, FG jobs shouldn't be in the list)
@@ -472,7 +521,8 @@ int bg(cmd cmd_obj) {
     printf("%s : %d\n", jobs_list[job_idx_in_jobs].cmd_full, jobs_list[job_idx_in_jobs].PID);
 
     // Send SIGCONT
-    my_system_call(SYS_KILL, jobs_list[job_idx_in_jobs].PID, SIGCONT);
+    int res2 =my_system_call(SYS_KILL, jobs_list[job_idx_in_jobs].PID, SIGCONT);
+    if (res2==ERROR){perrorSmash("","kill failed");}
 
     // Update state to Background
     jobs_list[job_idx_in_jobs].state = JOB_STATE_BG;
@@ -489,7 +539,13 @@ int quit(cmd cmd_obj){// kill the smash
         for (int i = 0; i < JOBS_NUM_MAX; ++i) {
             if (jobs_list[i].PID == ERROR) continue;
             printf("[%d] %s - ",jobs_list[i].JOB_ID,jobs_list[i].cmd_full);
-            my_system_call(SYS_KILL, jobs_list[i].PID, SIGTERM);
+            int res = my_system_call(SYS_KILL, jobs_list[i].PID, SIGTERM);;
+            if (res==ERROR){
+                perrorSmash("","kill failed");
+                return ERROR;
+            }
+
+
             printf("sending SIGTERM... ");
             fflush(stdout);
             bool job_is_dead = false;
@@ -504,8 +560,6 @@ int quit(cmd cmd_obj){// kill the smash
                 }
                 time_t curr_time=time(NULL);
                  diff = difftime(curr_time, start_time);
-
-
             }
 /*            for (int second = 0; second < 5 ; ++second) {
                 int still_alive = my_system_call(SYS_KILL,jobs_list[i].PID,0);
@@ -521,7 +575,8 @@ int quit(cmd cmd_obj){// kill the smash
                 fflush(stdout);
             }
             else{ // 5 sec passed but job is still alive, send SIGKILL
-                my_system_call(SYS_KILL, jobs_list[i].PID, SIGKILL);
+                int chk=my_system_call(SYS_KILL, jobs_list[i].PID, SIGKILL);
+                if (chk==ERROR){perrorSmash("","kill failed"); return ERROR;}
                 printf("sending SIGKILL... done");
                 fflush(stdout);
             }
@@ -554,7 +609,6 @@ int pwd(cmd cmd_obj) {
         return ERROR;
     }
     else {
-
         char* pwd = (char*)malloc(CMD_LENGTH_MAX); 
         if (pwd == NULL) {
             perrorSmash(" pwd","malloc failed");
