@@ -234,7 +234,7 @@ int fg(cmd cmd_obj) {
         int job_id = jobs_list[0].JOB_ID;
         if (jobs_list[0].PID == ERROR) {
             // TODO is this the best way to verify empty joblist????
-            perrorSmash(" fg", " jobs list is empty");
+            perrorSmash(" fg", "jobs list is empty");
             return ERROR;
         }
         //find maximal job_id
@@ -518,7 +518,7 @@ int bg(cmd cmd_obj) {
 
     // 4. Execution (Spec: Page 11, line 239)
     // Print the command and PID
-    printf("%s : %d\n", jobs_list[job_idx_in_jobs].cmd_full, jobs_list[job_idx_in_jobs].PID);
+    printf("%s: %d\n", jobs_list[job_idx_in_jobs].cmd_full, jobs_list[job_idx_in_jobs].PID);
 
     // Send SIGCONT
     int res2 =my_system_call(SYS_KILL, jobs_list[job_idx_in_jobs].PID, SIGCONT);
@@ -816,12 +816,16 @@ int alias(cmd cmd_obj){
     memset(new_node->alias, 0, sizeof(new_node->alias));
     strcpy(new_node->alias, cmd_obj.args[1]);
     cmd cmd_obj_tmp;
-    cmd_obj_tmp.bg=0;
-    cmd_obj_tmp.internal = 0;
+    
     int old_num_cmd = num_cmd;
     for (int i = 2; i < ARGS_NUM_MAX; ++i) {
         if((cmd_obj.args[i] != NULL) && (strcmp(cmd_obj.args[i],"&&")  == 0) ){
             end_of_cmd=i;
+            cmd_obj_tmp.bg=0;
+            cmd_obj_tmp.internal = 0;
+            for (int i=0; i<ARGS_NUM_MAX ; i++){
+                cmd_obj_tmp.args[i]= NULL;
+            }
             cmd_obj_tmp.nargs=end_of_cmd-start_of_cmd-1;
 
             if (strcmp(cmd_obj.args[start_of_cmd], "")!=0){
@@ -834,7 +838,7 @@ int alias(cmd cmd_obj){
                     if (dup) {
                         strcpy(dup, cmd_obj.args[k]);
                         cmd_obj_tmp.args[k-start_of_cmd] = dup;
-                        printf("%s, %s\n", cmd_obj_tmp.cmd, cmd_obj_tmp.args[k-start_of_cmd]);
+                        //printf("%s, %s\n", cmd_obj_tmp.cmd, cmd_obj_tmp.args[k-start_of_cmd]);
                     }
                     else{ return ERROR;
                     }
